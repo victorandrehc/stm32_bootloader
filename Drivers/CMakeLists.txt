@@ -62,7 +62,7 @@ target_compile_options(${DRIVER_LIB} PRIVATE
 target_link_options(${DRIVER_LIB} PRIVATE
         -T${LINKING_SCRIPT}
         ${CPU_PARAMETERS}
-        -Wl,-Map=${CMAKE_PROJECT_NAME}.map
+        -Wl,-Map=${DRIVER_LIB}.map
                 -specs=nosys.specs
         -specs=nano.specs
         -Wl,--start-group

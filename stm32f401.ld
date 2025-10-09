@@ -62,7 +62,8 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 96K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 512K
+FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 480K
+MY_MEMORY (rx)      : ORIGIN = 0x8078000, LENGTH = 32K
 }
 
 /* Define output sections */
@@ -92,6 +93,18 @@ SECTIONS
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
   } >FLASH
+
+  .mysection :
+  {
+    . = ALIGN(4);
+    __mysection_start__ = .;
+    *(.mysection*)
+    __mysection_end__ = .;
+  } > MY_MEMORY
+
+  /* check if MY_MEMORY usage exceeds MY_MEMORY size */
+  ASSERT(LENGTH(MY_MEMORY) >= (__mysection_end__ - __mysection_start__), "MY_MEMORY memory overflowed")
+
 
   /* Constant data goes into FLASH */
   .rodata :
@@ -140,6 +153,7 @@ SECTIONS
     _sdata = .;        /* create a global symbol at data start */
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
+    *(.RamFunc)
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */

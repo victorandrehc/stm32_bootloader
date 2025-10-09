@@ -2,11 +2,12 @@ set(SOURCE_FILES
         ../Inc/main.h
         ../Inc/stm32f4xx_hal_conf.h
         ../Inc/stm32f4xx_it.h
-        Src/main.cpp
+        Src/main.c
         Src/stm32f4xx_hal_msp.c
         Src/stm32f4xx_it.c
         Src/system_stm32f4xx.c
-        Src/startup_stm32f401xe.s)
+        Src/startup_stm32f401xe.s
+        Src/syscalls.c)
 
 set(EXECUTABLE ${PROJECT_NAME}_bootloader.out)
 
@@ -51,7 +52,7 @@ target_compile_options(${EXECUTABLE} PRIVATE
 target_link_options(${EXECUTABLE} PRIVATE
         -T${LINKING_SCRIPT}
         ${CPU_PARAMETERS}
-        -Wl,-Map=${CMAKE_PROJECT_NAME}.map
+        -Wl,-Map=${EXECUTABLE}.map
         -specs=nosys.specs
         -specs=nano.specs
         -Wl,--start-group

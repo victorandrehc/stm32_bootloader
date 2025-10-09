@@ -27,6 +27,9 @@ extern "C"
 
 #include "stm32f4xx_hal.h"
 
+#define LOCATE_FUNC __attribute__((section(".mysection"))) __attribute__((noinline))
+#define LOCATE_RAM_FUNC __attribute__((section(".RamFunc"))) __attribute__((noinline))
+
 #define B1_Pin             GPIO_PIN_13
 #define B1_GPIO_Port       GPIOC
 #define USART_TX_Pin       GPIO_PIN_2

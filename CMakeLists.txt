@@ -50,11 +50,12 @@ set(CPU_PARAMETERS
         -mfpu=fpv4-sp-d16
         -mfloat-abi=hard)
 
-set(LINKING_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/STM32F401RETx_FLASH.ld)
+set(LINKING_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/stm32f401.ld)
 
 add_subdirectory(Drivers)
 
-add_subdirectory(app)
 add_subdirectory(bootloader)
+add_subdirectory(app)
+
 
 

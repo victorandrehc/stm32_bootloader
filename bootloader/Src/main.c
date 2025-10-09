@@ -17,6 +17,10 @@
   */
 
 #include "main.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
 
 UART_HandleTypeDef huart2;
 
@@ -24,6 +28,12 @@ UART_HandleTypeDef huart2;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
+
+
+void LOCATE_RAM_FUNC blink(int delay_ms){
+  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+  HAL_Delay(delay_ms);
+}
 
 
 /**
@@ -38,8 +48,7 @@ int main(void)
   MX_USART2_UART_Init();
   while (1)
   {
-      HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-      HAL_Delay(1000);
+    blink(1000);
   }
 }
 
