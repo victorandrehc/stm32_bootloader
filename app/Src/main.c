@@ -1,26 +1,9 @@
-/* USER CODE BEGIN Header */
-/**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2023 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
-
 #include "main.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdio.h>
 
 UART_HandleTypeDef huart2;
 
@@ -29,22 +12,18 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 
-void LOCATE_FUNC blink(int delay_ms){
+void blink(int delay_ms){
   HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
   HAL_Delay(delay_ms);
 }
 
-
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
 int main(void)
 {
   HAL_Init();
   SystemClock_Config();
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  printf("STARTING APPLICATION\n");
   while (1)
   {
     blink(500);
