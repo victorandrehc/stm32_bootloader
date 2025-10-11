@@ -63,7 +63,9 @@ target_link_options(${EXECUTABLE} PRIVATE
         -Wl,--end-group
         -Wl,--print-memory-usage
         -flto
-        -Wl,--no-warn-rwx-segment)
+        -Wl,--no-warn-rwx-segment
+        #THis here tells the export the bootloaderSymbol to be used on the linker script
+        -Wl,--defsym,bootloaderSymbol=1)
 
 # Improve clean target
 set_target_properties(${EXECUTABLE} PROPERTIES ADDITIONAL_CLEAN_FILES
