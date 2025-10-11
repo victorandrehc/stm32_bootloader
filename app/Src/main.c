@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
+#include <boot_config.h>
 
 UART_HandleTypeDef huart2;
 

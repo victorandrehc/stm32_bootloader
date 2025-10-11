@@ -1,5 +1,5 @@
 #include "main.h"
-#include "config.h"
+#include "boot_config.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -14,42 +14,6 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 
 
-static void deinit_peripherals(void)
-{
-    // Stop SysTick
-    SysTick->CTRL = 0;
-    SysTick->LOAD = 0;
-    SysTick->VAL  = 0;
-
-    // Reset SysTick interrupt
-    NVIC_ClearPendingIRQ(SysTick_IRQn);
-
-    HAL_RCC_DeInit();
-
-    // Clear pending faults
-    SCB->ICSR |= SCB_ICSR_PENDSTCLR_Msk;
-    SCB->SHCSR = 0;
-}
-
-void jump_to_application(void)
-{
-    uint32_t app_stack = *(volatile uint32_t*)APP_START_ADDR;
-    uint32_t app_reset_handler = *(volatile uint32_t*)(APP_START_ADDR + 4);
-    printf("app_stack: 0x%lx\tapp_reset_handler0x%lx\n", app_stack, app_reset_handler);
-    printf("STACK VALIDITY: 0x%lx\n", (app_stack & 0x2FFE0000));
-    
-    if((app_stack & 0x2FFE0000) != 0x20000000){
-      printf("No application loaded\n");
-    } 
-
-    __disable_irq();
-    deinit_peripherals();
-    HAL_DeInit();
-    SCB->VTOR = APP_START_ADDR;
-    __set_MSP(app_stack);
-    __enable_irq();
-    ((void(*)(void))app_reset_handler)();
-}
 
 void blink(int delay_ms){
   HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
@@ -65,7 +29,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   printf("starting\n");
-  jump_to_application();
+  jump_to_application(APP_START_ADDR);
   while (1)
   {
     blink(1000);

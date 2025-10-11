@@ -12,7 +12,7 @@ set(SOURCE_FILES
 set(EXECUTABLE ${PROJECT_NAME}_app.out)
 
 add_executable(${EXECUTABLE} ${STM32CUBEMX_GENERATED_FILES} ${SOURCE_FILES})
-target_link_libraries(${EXECUTABLE} drivers)
+target_link_libraries(${EXECUTABLE} drivers boot_control)
 
 target_compile_definitions(${EXECUTABLE} PRIVATE
         -DUSE_HAL_DRIVER
@@ -24,6 +24,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
         ../Drivers/STM32F4xx_HAL_Driver/Inc
         ../Drivers/CMSIS/Device/ST/STM32F4xx/Include
         ../Drivers/CMSIS/Include
+        ../boot_control/Inc
         )
 
 target_compile_options(${EXECUTABLE} PRIVATE

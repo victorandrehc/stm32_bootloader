@@ -1,4 +1,0 @@
-#pragma once
-
-#define BOOT_START_ADDR 0x8000000
-#define APP_START_ADDR 0x08008000

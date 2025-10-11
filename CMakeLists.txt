@@ -53,7 +53,7 @@ set(CPU_PARAMETERS
 set(LINKING_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/stm32f401.ld)
 
 add_subdirectory(Drivers)
-
+add_subdirectory(boot_control)
 add_subdirectory(bootloader)
 add_subdirectory(app)
 
