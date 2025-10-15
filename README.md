@@ -21,7 +21,11 @@ the Drivers folder might be necessary since the target might use a different HAL
 `openocd -f board/st_nucleo_f4.cfg -c 'program build/cmake_stm32.bin 0x08000000' -c 'verify_image_checksum build/cmake_stm32.bin' -c 'sleep 200' -c 'reset run' -c 'exit'`
 4. Open gdb via
 `openocd -f interface/stlink.cfg -f target/stm32f4x.cfg`
-`gdb -ex "target remote localhost:3333" -ex "monitor reset halt" build/cmake_stm32.out`
+`gdb -ex "target remote localhost:3333" -ex "monitor reset halt" build/bootloader/cmake_stm32_bootloader.out`
+`gdb -ex "target remote localhost:3333" -ex "monitor reset halt" build/app/cmake_stm32_app.out`
+
+5. Open terminal
+`picocom --imap lfcrlf -b 115200 /dev/ttyACM0`
 
 ## Toolchain File
 The toolchain file on this project is located on `arm-none-eabi-gcc.cmake` and presumes that the gcc arm is located on the

@@ -7,12 +7,13 @@ set(SOURCE_FILES
         Src/stm32f4xx_it.c
         Src/system_stm32f4xx.c
         Src/startup_stm32f401xe.s
-        Src/syscalls.c)
+        Src/syscalls.c
+        ../boot_control/Src/boot_config.c)
 
 set(EXECUTABLE ${PROJECT_NAME}_bootloader.out)
 
 add_executable(${EXECUTABLE} ${STM32CUBEMX_GENERATED_FILES} ${SOURCE_FILES})
-target_link_libraries(${EXECUTABLE} drivers boot_control)
+target_link_libraries(${EXECUTABLE} drivers)
 
 target_compile_definitions(${EXECUTABLE} PRIVATE
         -DUSE_HAL_DRIVER

@@ -29,12 +29,23 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   printf("starting\n");
-  jump_to_application(APP_START_ADDR);
-  while (1)
+  uint32_t* boot_function_value_ptr = (uint32_t*)&bootloader_api;
+  volatile void* boot_loader_api_ptr = (volatile void*)&bootloader_api;
+  printf("jump function address %p 0x%08lx\n",  boot_loader_api_ptr, *boot_function_value_ptr);
+  if(boot_loader_api_ptr != (void*)(BOOT_CONFIG_START_ADDR))
   {
-    blink(1000);
-    printf("STARTING\n");
+    printf("BootLoader API not in place\n");
+    Error_Handler();
   }
+  if( BOOT_START_ADDR <= *boot_function_value_ptr && *boot_function_value_ptr<=APP_START_ADDR)
+  {
+    bootloader_api.jump_to_application();
+  }
+  else
+  {
+    printf("BootLoader API not pointing to a function located inside the booloader\n");
+  }
+  Error_Handler();
 }
 
 /**
@@ -139,6 +150,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+    blink(1000);
   }
 }
 
