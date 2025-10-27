@@ -8,11 +8,11 @@
 #define PACKED
 #endif
 
-#define FLASH_CFG __attribute__((section(".flash_cfg")))
+#define FLASH_CFG __attribute__((section(".noinit")))
 
 #define BOOT_START_ADDR 0x8000000
 #define APP_START_ADDR 0x08008000
-#define BOOT_CONFIG_START_ADDR 0x0807FC00
+#define BOOT_CONFIG_START_ADDR 0x20017c00
 
 
 typedef enum reset_reason_e{
@@ -34,10 +34,13 @@ typedef void (*jump_to_app_func_t)(void);
 typedef void (*reset_funct_t)(const reset_reason_e reset_reason);
 
 typedef struct PACKED bootloader_api_t{
-    const jump_to_app_func_t jump_to_application;
-    const reset_funct_t reset;
+    jump_to_app_func_t jump_to_application;
+    reset_funct_t reset;
     boot_info_t boot_info;
 }bootloader_api_t;
 
-extern  FLASH_CFG volatile bootloader_api_t bootloader_api;
+extern volatile bootloader_api_t* bootloader_api_ptr;
+void init_boot_api();
+
 const char* get_reset_reason_string();
+

@@ -6,6 +6,9 @@
 #define BOOT_START_ADDR 0x8000000
 #define APP_START_ADDR 0x08008000
 
+static volatile FLASH_CFG bootloader_api_t bootloader_api;
+volatile bootloader_api_t* bootloader_api_ptr = &bootloader_api; 
+
 static void deinit_peripherals(void)
 {
     // Stop SysTick
@@ -55,10 +58,13 @@ static void jump_to_bootloader_implementaton(const reset_reason_e reset_reason){
   NVIC_SystemReset();
 }
 
-volatile FLASH_CFG bootloader_api_t bootloader_api = {
-  .jump_to_application = jump_to_application_implementation,
-  .reset = jump_to_bootloader_implementaton,
-};
+
+
+
+void init_boot_api(){
+  bootloader_api.jump_to_application = jump_to_application_implementation;
+  bootloader_api.reset = jump_to_bootloader_implementaton;
+}
 
 const char* get_reset_reason_string()
 {

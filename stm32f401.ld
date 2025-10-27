@@ -62,15 +62,15 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 _Boot_Flash_Origin = 0x08000000;
 _Boot_Flash_Size = 32K;
 _APP_Flash_Origin = 0x08008000;
-_APP_Flash_Size = 479K;
+_APP_Flash_Size = 480K;
 
 
 /* Specify the memory areas */
 MEMORY
 {
-  RAM (xrw)        : ORIGIN = 0x20000000, LENGTH = 96K
+  RAM (xrw)        : ORIGIN = 0x20000000, LENGTH = 95K
   FLASH (rx)       : ORIGIN = DEFINED(bootloaderSymbol) ? _Boot_Flash_Origin : _APP_Flash_Origin, LENGTH = DEFINED(bootloaderSymbol) ? _Boot_Flash_Size : _APP_Flash_Size
-  FLASH_CFG  (rx)  : ORIGIN = 0x0807FC00, LENGTH = 1K
+  RAM_CFG  (rx)  : ORIGIN = 0x20017c00, LENGTH = 1K
 }
 
 /* Define output sections */
@@ -154,10 +154,10 @@ SECTIONS
     _edata = .;        /* define a global symbol at data end */
   } >RAM AT> FLASH
 
-  .FLASH_CFG (NOLOAD):
+  .noinit (NOLOAD):
   {
-      KEEP(*(.flash_cfg))
-  } > FLASH_CFG
+      KEEP(*(.noinit))
+  } > RAM_CFG
 
   /* Uninitialized data section */
   . = ALIGN(4);

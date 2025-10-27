@@ -8,7 +8,7 @@
 
 UART_HandleTypeDef huart2;
 
- volatile bootloader_api_t* boot_loader_api_ptr = (bootloader_api_t*)BOOT_CONFIG_START_ADDR;
+volatile bootloader_api_t* bootloader_api_ptr = (bootloader_api_t*)BOOT_CONFIG_START_ADDR;
 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -29,7 +29,7 @@ int main(void)
   while (1)
   {
     blink(2000);
-    boot_loader_api_ptr->reset(APPLICATION_RESET);
+    bootloader_api_ptr->reset(APPLICATION_RESET);
   }
 }
 

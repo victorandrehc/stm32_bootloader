@@ -28,25 +28,21 @@ int main(void)
 
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  
+  init_boot_api();
+  
   printf("starting\n");
   const char* reboot_reason = get_reset_reason_string();
-  printf("MAGIC NUMBER: 0x%08lx RESET_REASON: %s\n",bootloader_api.boot_info.magic, reboot_reason);
-  uint32_t* boot_function_value_ptr = (uint32_t*)&bootloader_api;
-  volatile void* boot_loader_api_ptr = (volatile void*)&bootloader_api;
-  printf("jump function address %p 0x%08lx\n",  boot_loader_api_ptr, *boot_function_value_ptr);
-  if(boot_loader_api_ptr != (void*)(BOOT_CONFIG_START_ADDR))
+  printf("MAGIC NUMBER: 0x%08lx RESET_REASON: %s\n",bootloader_api_ptr->boot_info.magic, reboot_reason);
+
+  if(bootloader_api_ptr != (void*)(BOOT_CONFIG_START_ADDR))
   {
     printf("BootLoader API not in place\n");
     Error_Handler();
   }
-  if( BOOT_START_ADDR <= *boot_function_value_ptr && *boot_function_value_ptr<=APP_START_ADDR)
-  {
-    bootloader_api.jump_to_application();
-  }
-  else
-  {
-    printf("BootLoader API not pointing to a function located inside the booloader\n");
-  }
+  
+  bootloader_api_ptr->jump_to_application();
+  printf("SHOULD NOT HAVE RETURNED\n");
   Error_Handler();
 }
 
