@@ -156,7 +156,7 @@ SECTIONS
 
   .noinit (NOLOAD):
   {
-      KEEP(*(.noinit))
+      KEEP(*(.BOOT_CONFIG))
   } > RAM_CFG
 
   /* Uninitialized data section */

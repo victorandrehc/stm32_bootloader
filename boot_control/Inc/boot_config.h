@@ -8,7 +8,7 @@
 #define PACKED
 #endif
 
-#define FLASH_CFG __attribute__((section(".noinit")))
+#define BOOT_CONFIG __attribute__((section(".BOOT_CONFIG")))
 
 #define BOOT_START_ADDR 0x8000000
 #define APP_START_ADDR 0x08008000

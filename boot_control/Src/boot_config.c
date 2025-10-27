@@ -3,10 +3,7 @@
 #include "stm32f4xx_hal.h"
 #include <stdio.h>
 
-#define BOOT_START_ADDR 0x8000000
-#define APP_START_ADDR 0x08008000
-
-static volatile FLASH_CFG bootloader_api_t bootloader_api;
+static volatile BOOT_CONFIG bootloader_api_t bootloader_api;
 volatile bootloader_api_t* bootloader_api_ptr = &bootloader_api; 
 
 static void deinit_peripherals(void)
