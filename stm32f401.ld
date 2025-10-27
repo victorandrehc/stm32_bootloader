@@ -154,7 +154,7 @@ SECTIONS
     _edata = .;        /* define a global symbol at data end */
   } >RAM AT> FLASH
 
-  .flash_cfg :
+  .FLASH_CFG (NOLOAD):
   {
       KEEP(*(.flash_cfg))
   } > FLASH_CFG

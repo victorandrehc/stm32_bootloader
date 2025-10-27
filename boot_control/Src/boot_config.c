@@ -49,12 +49,36 @@ static void jump_to_application_implementation(){
   jump_to_address(APP_START_ADDR);
 }
 
-static void jump_to_bootloader_implementaton(){
-  jump_to_address(BOOT_START_ADDR);
+static void jump_to_bootloader_implementaton(const reset_reason_e reset_reason){
+  bootloader_api.boot_info.magic = BOOT_INFO_MAGIC;
+  bootloader_api.boot_info.reset_reason_uint = (uint32_t) reset_reason;
+  NVIC_SystemReset();
 }
 
 volatile FLASH_CFG bootloader_api_t bootloader_api = {
   .jump_to_application = jump_to_application_implementation,
-  .jump_to_bootloader = jump_to_bootloader_implementaton,
+  .reset = jump_to_bootloader_implementaton,
 };
+
+const char* get_reset_reason_string()
+{
+  if(bootloader_api.boot_info.magic != BOOT_INFO_MAGIC)
+  {
+    return "UNKNOWN_MAGIC_NUMBER_MISMATCH";
+  }
+
+  const reset_reason_e reset_reason = (reset_reason_e)bootloader_api.boot_info.reset_reason_uint;
+  switch(reset_reason)
+  {
+    case POWER_CYCLE:
+      return "POWER_CYCLE";
+    case APPLICATION_RESET:
+      return "APPLICATION RESET";
+    case FIRMWARE_UPDATE:
+      return "FIRMWARE UPDATE";
+    default:
+      break;
+  }
+  return "UNKNOWN_REASON";
+}
 

@@ -29,6 +29,8 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   printf("starting\n");
+  const char* reboot_reason = get_reset_reason_string();
+  printf("MAGIC NUMBER: 0x%08lx RESET_REASON: %s\n",bootloader_api.boot_info.magic, reboot_reason);
   uint32_t* boot_function_value_ptr = (uint32_t*)&bootloader_api;
   volatile void* boot_loader_api_ptr = (volatile void*)&bootloader_api;
   printf("jump function address %p 0x%08lx\n",  boot_loader_api_ptr, *boot_function_value_ptr);
