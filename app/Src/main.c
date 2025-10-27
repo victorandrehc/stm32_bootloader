@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <boot_config.h>
+#include <stdbool.h>
 
 UART_HandleTypeDef huart2;
 
@@ -14,10 +15,18 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 
-void blink(int delay_ms){
-  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-  HAL_Delay(delay_ms);
+void blink(uint32_t delay_ms){
+  static uint32_t last_toggle = 0; 
+  uint32_t now = HAL_GetTick();    
+  const uint32_t delta_time = now - last_toggle;
+  if (delta_time >= delay_ms)
+  {
+      HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+      last_toggle = now;
+  }
 }
+
+static volatile bool reset_called = false;
 
 int main(void)
 {
@@ -26,11 +35,13 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   printf("STARTING APPLICATION\n");
-  while (1)
+  while (!reset_called)
   {
-    blink(2000);
-    bootloader_api_ptr->reset(APPLICATION_RESET);
+    blink(500);
+    
   }
+  printf("RESET CALLED\n");
+  bootloader_api_ptr->reset(APPLICATION_RESET);
 }
 
 /**
@@ -112,9 +123,12 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 2, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
@@ -123,6 +137,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if(GPIO_Pin != B1_Pin)
+  {
+    return;
+  }
+  reset_called = true;
 }
 
 
