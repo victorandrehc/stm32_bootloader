@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
-
+#include <stdbool.h>
 UART_HandleTypeDef huart2;
 
 
@@ -20,6 +20,20 @@ void blink(int delay_ms){
   HAL_Delay(delay_ms);
 }
 
+static volatile bool button_pressed = false;
+bool try_enter_DFU_mode(){
+  button_pressed = false;
+  bool dfu = ((reset_reason_e)bootloader_api_ptr->boot_info.reset_reason_uint == FIRMWARE_UPDATE);
+  const uint16_t delay_ms = 1000u;
+  const int num_tries = 3;
+  for(int i =0; i < num_tries && !dfu; i++){
+    printf("Booting in %i ms\n",(num_tries - i)*delay_ms);
+    dfu|=button_pressed;
+    HAL_Delay(delay_ms);
+  }
+  return dfu;
+}
+
 
 int main(void)
 {
@@ -31,7 +45,23 @@ int main(void)
   
   init_boot_api();
   
-  printf("starting\n");
+  printf("   ____              __\n");
+  printf("  / __ )____  ____  / /_\n");
+  printf(" / __  / __ \\/ __ \\/ __/\n");
+  printf("/ /_/ / /_/ / /_/ / /_\n");
+  printf("/_____/\\____/\\____/\\__/\n");
+  printf("\n");
+  printf("Press Button to Enter DFU mode\n");
+
+  bool dfu = try_enter_DFU_mode();
+
+  if(dfu)
+  {
+    printf("Entering in DFU ...\n");
+    bootloader_api_ptr->reset(APPLICATION_RESET);
+  }
+
+
   const char* reboot_reason = get_reset_reason_string();
   printf("MAGIC NUMBER: 0x%08lx RESET_REASON: %s\n",bootloader_api_ptr->boot_info.magic, reboot_reason);
 
@@ -126,8 +156,11 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 2, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
@@ -137,6 +170,16 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
 }
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if(GPIO_Pin != B1_Pin)
+  {
+    return;
+  }
+  button_pressed = true;
+}
+
 
 
 /**

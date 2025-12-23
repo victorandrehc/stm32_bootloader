@@ -89,3 +89,10 @@ void SysTick_Handler(void)
 {
     HAL_IncTick();
 }
+
+
+void EXTI15_10_IRQHandler(void)
+{
+  /* Check if EXTI line is pending for B1_Pin */
+  HAL_GPIO_EXTI_IRQHandler(B1_Pin);
+}

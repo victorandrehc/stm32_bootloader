@@ -41,7 +41,7 @@ int main(void)
     
   }
   printf("RESET CALLED\n");
-  bootloader_api_ptr->reset(APPLICATION_RESET);
+  bootloader_api_ptr->reset(FIRMWARE_UPDATE);
 }
 
 /**
