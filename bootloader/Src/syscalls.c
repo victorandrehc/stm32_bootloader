@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
-
+extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 // Dummy implementation of _write
 int _write(int file, const char *ptr, int len) {

@@ -8,12 +8,15 @@ set(SOURCE_FILES
         Src/system_stm32f4xx.c
         Src/startup_stm32f401xe.s
         Src/syscalls.c
-        ../boot_control/Src/boot_config.c)
+        ../boot_control/Src/boot_config.c
+        Src/uart_handler.h
+        Src/uart_handler.c
+        )
 
 set(EXECUTABLE ${PROJECT_NAME}_bootloader.out)
 
 add_executable(${EXECUTABLE} ${STM32CUBEMX_GENERATED_FILES} ${SOURCE_FILES})
-target_link_libraries(${EXECUTABLE} drivers)
+target_link_libraries(${EXECUTABLE} drivers serial_protocol)
 
 target_compile_definitions(${EXECUTABLE} PRIVATE
         -DUSE_HAL_DRIVER
@@ -26,6 +29,7 @@ target_include_directories(${EXECUTABLE} PRIVATE
         ../Drivers/CMSIS/Device/ST/STM32F4xx/Include
         ../Drivers/CMSIS/Include
         ../boot_control/Inc
+        ../serial_protocol/mcu/Inc
         )
 
 target_compile_options(${EXECUTABLE} PRIVATE

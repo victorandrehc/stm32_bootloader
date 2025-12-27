@@ -18,6 +18,7 @@
 #include "stm32f4xx_it.h"
 
 #include "main.h"
+extern UART_HandleTypeDef huart1;
 
 /******************************************************************************/
 /*           Cortex-M4 Processor Interruption and Exception Handlers          */
@@ -95,4 +96,9 @@ void EXTI15_10_IRQHandler(void)
 {
   /* Check if EXTI line is pending for B1_Pin */
   HAL_GPIO_EXTI_IRQHandler(B1_Pin);
+}
+
+void USART1_IRQHandler(void)
+{
+    HAL_UART_IRQHandler(&huart1); // This calls HAL_UART_RxCpltCallback() when a byte is received
 }

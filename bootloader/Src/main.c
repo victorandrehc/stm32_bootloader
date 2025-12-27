@@ -1,17 +1,23 @@
 #include "main.h"
 #include "boot_config.h"
+#include "uart_handler.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <serial_protocol.h>
+
 UART_HandleTypeDef huart2;
+UART_HandleTypeDef huart1;
 
 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_USART1_UART_Init(void);
+
 
 
 
@@ -19,6 +25,7 @@ void blink(int delay_ms){
   HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
   HAL_Delay(delay_ms);
 }
+
 
 static volatile bool button_pressed = false;
 bool try_enter_DFU_mode(){
@@ -41,8 +48,10 @@ int main(void)
   SystemClock_Config();
 
   MX_GPIO_Init();
+  MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   
+  uart_start_it();
   init_boot_api();
   
   printf("   ____              __\n");
@@ -55,9 +64,11 @@ int main(void)
 
   bool dfu = try_enter_DFU_mode();
 
-  if(dfu)
+  if(dfu || 1)
   {
     printf("Entering in DFU ...\n");
+    set_serial_api(uart1_send, uart1_recv);
+    recv_firmware();
     bootloader_api_ptr->reset(APPLICATION_RESET);
   }
 
@@ -131,6 +142,30 @@ static void MX_USART2_UART_Init(void)
   huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart2.Init.OverSampling = UART_OVERSAMPLING_16;
   if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+  HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);  
+  HAL_NVIC_EnableIRQ(USART1_IRQn); 
+
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
   {
     Error_Handler();
   }
