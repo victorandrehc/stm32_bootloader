@@ -59,17 +59,12 @@ _Min_Heap_Size = 0x200;      /* required amount of heap  */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
 
-_Boot_Flash_Origin = 0x08000000;
-_Boot_Flash_Size = 32K;
-_APP_Flash_Origin = 0x08008000;
-_APP_Flash_Size = 480K;
-
 
 /* Specify the memory areas */
 MEMORY
 {
   RAM (xrw)        : ORIGIN = 0x20000000, LENGTH = 95K
-  FLASH (rx)       : ORIGIN = DEFINED(bootloaderSymbol) ? _Boot_Flash_Origin : _APP_Flash_Origin, LENGTH = DEFINED(bootloaderSymbol) ? _Boot_Flash_Size : _APP_Flash_Size
+  FLASH (rx)       : ORIGIN =  0x08008000, LENGTH = 480K
   RAM_CFG  (rx)  : ORIGIN = 0x20017c00, LENGTH = 1K
 }
 

@@ -50,6 +50,8 @@ target_compile_options(${EXECUTABLE} PRIVATE
         $<$<CONFIG:Debug>:-Og -g3 -ggdb>
         $<$<CONFIG:Release>:-Os>)
 
+set(LINKING_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/stm32f401.ld)
+
 target_link_options(${EXECUTABLE} PRIVATE
         -T${LINKING_SCRIPT}
         ${CPU_PARAMETERS}
