@@ -48,13 +48,15 @@ static const char* get_serial_state_str(const serial_state_t serial_state){
 
 
 static size_t get_fw_size(uint8_t* payload){
-    size_t ret = payload[0] | (payload[1]<<8) | (payload[2]<<16) | (payload[3]<<24);
-    return ret;
+    //host and target have the same endianess
+    const size_t* fw_size = (const size_t*) payload;
+    return *fw_size;
 }
 
 static uint32_t get_fw_crc(uint8_t* payload){
-    size_t ret = payload[4] | (payload[5]<<8) | (payload[6]<<16) | (payload[7]<<24);
-    return ret;
+    //host and target have the same endianess
+    const uint32_t* fw_crc = (const uint32_t*)(payload + 4);
+    return *fw_crc;
 }
 
 serial_state_t process_ping_state()
