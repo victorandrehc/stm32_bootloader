@@ -26,22 +26,20 @@ class FrameProcessor(object):
     def send_frame(self, cmd, payload=b''):
         length = len(payload)
 
-        # Header: VER (1) | CMD (1) | LEN (4)
-        header = struct.pack('<BBI', self.VER, cmd, length)  # exactly 6 bytes
+        # Header: SOF(1) | VER (1) | CMD (1) | LEN (4)
+        header = struct.pack('<BBBI', self.SOF,self.VER, cmd, length)  # exactly 7 bytes
 
-        # # CRC16 over header + payload
+        # CRC16 over header + payload
         crc = crc16_ccitt(header + payload)
-        print (f"CRC: {crc:02x}")
 
         # Build final frame: SOF + header + payload + CRC16
-        frame = struct.pack('B', self.SOF) + header + payload + struct.pack('<H', crc)
-        # frame = struct.pack('B', SOF) + header;
+        frame = header + payload + struct.pack('<H', crc)
 
         # Send over UART
         self.ser.write(frame)
         self.ser.flush()  # ensures all bytes are sent
 
-        print(f"frame: {frame} crc: {struct.pack('<H', crc)}")
+        # print(f"frame: {frame} crc: {struct.pack('<H', crc)}")
 
 
     def recv_exact(self, length):
@@ -89,6 +87,3 @@ class FrameProcessor(object):
 
         return cmd, payload
     
-    def recv_ack_nack(self):
-        cmd,payload = self.recv_frame()
-        return cmd == self.CMD_ACK

@@ -108,8 +108,8 @@ bool recv_frame(serial_cmd_t *cmd, uint8_t **payload, size_t *len){
     }
     // print_frame(crc_buffer,CRC_SIZE);
     uint16_t crc_recv = crc_buffer[0] | (crc_buffer[1] <<8 );
-    uint8_t* crcable_buffer = &buffer[1];
-    size_t crcable_buffer_size = *len + HEADER_SIZE - 1; //SOF is not in CRC
+    uint8_t* crcable_buffer = &buffer[0];
+    size_t crcable_buffer_size = *len + HEADER_SIZE;
     uint16_t crc_calc = crc16_ccitt(crcable_buffer, crcable_buffer_size);
     // print_frame(crcable_buffer, crcable_buffer_size);
     // printf("crc_calc: %0x, crc_recv: %x\n",crc_calc,crc_recv);
