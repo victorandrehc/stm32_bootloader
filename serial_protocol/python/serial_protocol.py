@@ -14,13 +14,9 @@ class State(Enum):
     RESET = 4
     DONE = 5
 
-# STM32F4 / Ethernet CRC-32 parameters
-crc32_stm32 = crcmod.mkCrcFun(
-    poly=0x104C11DB7,   # note the leading 1 bit (33-bit representation)
-    initCrc=0xFFFFFFFF,
-    rev=True,
-    xorOut=0xFFFFFFFF
-)
+
+
+crc16_ccitt = crcmod.predefined.mkCrcFun('ccitt-false')
 
 class FirmwareUpdater:
     def __init__(self, frame_processor,firmware: bytes, chunk_size=256):
@@ -49,9 +45,9 @@ class FirmwareUpdater:
 
             # ---- START ----
             elif self.state == State.START:
-                fw_crc = crc32_stm32(self.fw)
+                fw_crc = crc16_ccitt(self.fw)
                 print(f"len: {len(self.fw):#02x} fw_crc: {fw_crc:#02x}")
-                payload = struct.pack('<I', len(self.fw)) + struct.pack('<I', fw_crc)
+                payload = struct.pack('<I', len(self.fw)) + struct.pack('<H', fw_crc)
                 self.frame_processor.send_frame(self.frame_processor.CMD_START, payload)
                 self.wait_ack()
                 self.state = State.DATA

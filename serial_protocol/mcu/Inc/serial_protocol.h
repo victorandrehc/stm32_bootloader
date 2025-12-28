@@ -9,7 +9,7 @@ typedef  int (*uart_recv_t)(uint8_t *buf, size_t len, uint32_t timeout_ms);
 typedef  int (*flash_feed_t)(const uint8_t *buf, size_t len);
 typedef  int (*flash_flush_t)(void);
 typedef  void (*flash_reset_t)(void);
-typedef bool (*fw_crc_check_t)(uint32_t crc_recv, size_t fw_len);
+typedef bool (*fw_crc_check_t)(uint16_t crc_recv, size_t fw_len);
 
 
 typedef struct {

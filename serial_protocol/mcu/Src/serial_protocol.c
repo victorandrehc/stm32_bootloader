@@ -84,7 +84,7 @@ serial_state_t process_ping_state()
     
 }
 
-serial_state_t process_start_state(size_t* fw_size, uint32_t* fw_crc)
+serial_state_t process_start_state(size_t* fw_size, uint16_t* fw_crc)
 {
     int ret = 0;
     serial_cmd_t cmd = CMD_UNKNOWN;
@@ -118,7 +118,7 @@ serial_state_t process_start_state(size_t* fw_size, uint32_t* fw_crc)
     }
 }
 
-serial_state_t process_data_state(size_t fw_size, uint32_t fw_crc)
+serial_state_t process_data_state(size_t fw_size, uint16_t fw_crc)
 {
     int ret = 0;
     serial_cmd_t cmd = CMD_UNKNOWN;
@@ -162,7 +162,7 @@ int recv_firmware(){
     }
     serial_state_t serial_state = PING_STATE;
     size_t fw_size = 0;
-    uint32_t fw_crc = 0;
+    uint16_t fw_crc = 0;
 
     while(serial_state != END_STATE){
         serial_state_t next_serial_state = serial_state;

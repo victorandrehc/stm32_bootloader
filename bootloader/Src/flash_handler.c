@@ -203,14 +203,24 @@ int flash_fw_flush(void)
 }
 
 extern CRC_HandleTypeDef hcrc;
-bool fw_crc_check(uint32_t crc_recv, size_t fw_len)
+
+static uint16_t crc16_ccitt(const uint8_t *data, size_t len) {
+    uint16_t crc = 0xFFFF;
+    for (uint16_t i = 0; i < len; i++) {
+        crc ^= (uint16_t)data[i] << 8;
+        for (uint8_t j = 0; j < 8; j++)
+            crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
+    }
+    return crc;
+}
+
+bool fw_crc_check(uint16_t crc_recv, size_t fw_len)
 {
     flash_handler_t* first_sector = &flash_handler_array[0];
-    uint32_t* data = ((uint32_t*) first_sector->start_addr);
-    uint32_t length_words = BYTES_TO_WORDS(fw_len);
-    uint32_t crc = HAL_CRC_Calculate(&hcrc, data, length_words);
-    printf("FW CRC CALC: 0x%x RECV: 0x%x", crc, fw_len);
-    return true;
+    const uint8_t* data = (const uint8_t*)(first_sector->start_addr);
+    uint16_t crc = crc16_ccitt(data, fw_len);
+    printf("FW CRC CALC: 0x%x RECV: 0x%x\n", crc, crc_recv);
+    return crc == crc_recv;
 
 }
 
