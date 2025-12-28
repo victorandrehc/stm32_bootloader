@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "boot_config.h"
 #include "main.h"
+#include "stm32f4xx_hal_crc.h"
 
 typedef struct{
     const uint32_t sector_id; // e.g.: FLASH_SECTOR_2
@@ -15,16 +16,22 @@ typedef struct{
 #define BYTES_TO_WORDS(SIZE) (SIZE/sizeof(uint32_t))
 #define SECTOR_SIZE_BYTES_MAX FLASH_SECTOR_3_SIZE
 
-#define FLASH_HANDLER_ARRAY_SIZE 6
-flash_handler_t flash_handler_array[FLASH_HANDLER_ARRAY_SIZE]={
+
+flash_handler_t flash_handler_array[]={
     {FLASH_SECTOR_2, FLASH_SECTOR_2_START_ADDR, FLASH_SECTOR_2_SIZE, false},
     {FLASH_SECTOR_3, FLASH_SECTOR_3_START_ADDR, FLASH_SECTOR_3_SIZE, false},
 };
+#define FLASH_HANDLER_ARRAY_SIZE (sizeof(flash_handler_array) / sizeof(flash_handler_t))
 static size_t current_sector_pivot = 0;
 
 
-static uint8_t sector[SECTOR_SIZE_BYTES_MAX];
+static __attribute__((aligned(4))) uint8_t sector[SECTOR_SIZE_BYTES_MAX];
 static size_t pivot = 0;
+
+size_t get_max_fw_size()
+{
+    return FLASH_SECTOR_2_SIZE + FLASH_SECTOR_3_SIZE;
+}
 
 static void print_buffer(const uint8_t *buf, size_t len)
 {
@@ -46,7 +53,8 @@ static int flash_erase_once(flash_handler_t* current_sector)
 
     FLASH_EraseInitTypeDef erase;
     uint32_t sectorError;
-
+    
+    __disable_irq();
     HAL_FLASH_Unlock();
 
     erase.TypeErase    = FLASH_TYPEERASE_SECTORS;
@@ -54,15 +62,21 @@ static int flash_erase_once(flash_handler_t* current_sector)
     erase.Sector       = current_sector->sector_id;
     erase.NbSectors    = 1;
 
-    if (HAL_FLASHEx_Erase(&erase, &sectorError) != HAL_OK)
+    int ret = 0;
+    if (HAL_FLASHEx_Erase(&erase, &sectorError) == HAL_OK)
     {
-        HAL_FLASH_Lock();
-        return -1;
+        current_sector->erased = true;
+        ret = 0;
+    }
+    else
+    {
+        ret = -1;
     }
 
     HAL_FLASH_Lock();
-    current_sector->erased = true;
-    return 0;
+    __enable_irq();
+    
+    return ret;
 }
 
 static void increment_current_sector()
@@ -75,22 +89,28 @@ static void increment_current_sector()
     }
 }
 
-static int flash_write_sector(const uint8_t *buf)
+static int flash_write_sector_internal(const uint8_t *buf)
 {
    
     flash_handler_t* current_sector = &flash_handler_array[current_sector_pivot];
      printf("Writting sector ADDR: 0x%08lx SIZE: %u bytes\n", current_sector->start_addr, current_sector->length_bytes);
     if(current_sector->erased == false)
     {
-       flash_erase_once(current_sector);
+       const int ret = flash_erase_once(current_sector);
+       if(ret)
+       {
+        return -1;
+       }
     }
 
     uint32_t address = current_sector->start_addr;
     const size_t length_words = BYTES_TO_WORDS(current_sector->length_bytes);
     const uint32_t *data = (const uint32_t *)buf;
 
+    __disable_irq();
     HAL_FLASH_Unlock();
-
+    
+    int ret =0;
     for (size_t i = 0; i < length_words; i++)
     {
         if (HAL_FLASH_Program(
@@ -98,17 +118,30 @@ static int flash_write_sector(const uint8_t *buf)
                 address,
                 data[i]) != HAL_OK)
         {
-            HAL_FLASH_Lock();
-            return -1;
+            ret = -1;
+            break;
         }
         address += 4;
     }
 
     HAL_FLASH_Lock();
-
-    return 0;
+    __enable_irq();
+    return ret;
 }
 
+
+void flash_write_sector()
+{
+    const int ret = flash_write_sector_internal(sector);
+    if(ret == 0)
+    {
+        increment_current_sector();
+    }
+    else
+    {
+        printf("WRITING IN SECTOR FAILED\n");
+    }
+}
 
 static void flash_fw_feed_internal(const uint8_t *buf, size_t len)
 {
@@ -127,11 +160,7 @@ static void flash_fw_feed_internal(const uint8_t *buf, size_t len)
         if (pivot == current_sector->length_bytes) 
         {
             printf("SECTOR IS FULL\n");
-            int ret = flash_write_sector(sector);
-            if(ret == 0)
-            {
-                increment_current_sector();
-            }
+            flash_write_sector();
             flash_fw_reset();   // reset pivot + buffer
         }
     }
@@ -150,11 +179,7 @@ static void flash_fw_flush_internal(void)
     // pad current sector with trash data
     memset(&sector[pivot], 0xFF, current_sector->length_bytes - pivot);
     //write sector
-    int ret = flash_write_sector(sector);
-    if(ret == 0)
-    {
-        increment_current_sector();
-    }
+    flash_write_sector();
     flash_fw_reset();  // reset pivot + buffer
 }
 
@@ -177,4 +202,15 @@ int flash_fw_flush(void)
     return 0;
 }
 
+extern CRC_HandleTypeDef hcrc;
+bool fw_crc_check(uint32_t crc_recv, size_t fw_len)
+{
+    flash_handler_t* first_sector = &flash_handler_array[0];
+    uint32_t* data = ((uint32_t*) first_sector->start_addr);
+    uint32_t length_words = BYTES_TO_WORDS(fw_len);
+    uint32_t crc = HAL_CRC_Calculate(&hcrc, data, length_words);
+    printf("FW CRC CALC: 0x%x RECV: 0x%x", crc, fw_len);
+    return true;
+
+}
 

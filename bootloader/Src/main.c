@@ -10,14 +10,18 @@
 #include <stdbool.h>
 #include <serial_protocol.h>
 
+#include "stm32f4xx_hal_crc.h"
+
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart1;
+CRC_HandleTypeDef hcrc;
 
 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_CRC_Init(void);
 
 
 
@@ -51,6 +55,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_CRC_Init();
   
   uart_start_it();
   init_boot_api();
@@ -68,7 +73,9 @@ int main(void)
   if(dfu)
   {
     printf("Entering in DFU ...\n");
-    set_serial_api(uart1_send, uart1_recv, flash_fw_feed, flash_fw_flush, flash_fw_reset);
+    const size_t max_fw_size = get_max_fw_size();
+    serial_api_t serial_api = {uart1_send, uart1_recv, flash_fw_feed, flash_fw_flush, flash_fw_reset, fw_crc_check, max_fw_size};
+    set_serial_api(serial_api);
     recv_firmware();
     bootloader_api_ptr->reset(APPLICATION_RESET);
   }
@@ -113,7 +120,7 @@ void SystemClock_Config(void)
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
-  }
+  }__HAL_RCC_CRC_CLK_ENABLE();  // enable CRC clock
     RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
     RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
     RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
@@ -206,6 +213,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
+}
+
+
+void MX_CRC_Init(void)
+{
+  __HAL_RCC_CRC_CLK_ENABLE();  // enable CRC clock
+    hcrc.Instance = CRC;
+    HAL_CRC_Init(&hcrc);
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)

@@ -104,7 +104,12 @@ serial_state_t process_start_state(size_t* fw_size, uint32_t* fw_crc)
             serial_api->flash_reset();
             *fw_size = get_fw_size(payload);
             *fw_crc = get_fw_crc(payload);
-            printf("fw_size 0x%x, crc 0x%lx\n",*fw_size,*fw_crc);
+            printf("fw_size 0x%x, max_fw_size 0x%x, crc 0x%lx\n",*fw_size,serial_api->max_fw_size,*fw_crc);
+            if(*fw_size > serial_api->max_fw_size)
+            {
+                send_nack();
+                return RESET_STATE;
+            }
             send_ack();
             return DATA_STATE;
         default:
@@ -113,7 +118,7 @@ serial_state_t process_start_state(size_t* fw_size, uint32_t* fw_crc)
     }
 }
 
-serial_state_t process_data_state()
+serial_state_t process_data_state(size_t fw_size, uint32_t fw_crc)
 {
     int ret = 0;
     serial_cmd_t cmd = CMD_UNKNOWN;
@@ -134,14 +139,21 @@ serial_state_t process_data_state()
             return DATA_STATE;
         case CMD_END: 
             serial_api->flash_flush();
-            send_ack();
-            return END_STATE;
+            const bool ret = serial_api->fw_crc_check(fw_crc, fw_size);
+            if(ret)
+            {
+                send_ack();
+                return END_STATE;
+            }
+            send_nack();
+            return RESET_STATE;
         default:
             send_nack();
             return RESET_STATE;
     }
 
 }
+
 
 int recv_firmware(){
     if(!check_valid_api())
@@ -165,9 +177,10 @@ int recv_firmware(){
                 next_serial_state = process_start_state(&fw_size, &fw_crc);
                 break;
             case DATA_STATE:
-                next_serial_state = process_data_state();
+                next_serial_state = process_data_state(fw_size, fw_crc);
                 break;
             case END_STATE:
+                
                 break;
             case RESET_STATE:
             default:

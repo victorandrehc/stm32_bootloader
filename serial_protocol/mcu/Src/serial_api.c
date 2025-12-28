@@ -4,14 +4,11 @@
 
 static serial_api_t serial_api;
 
-void set_serial_api(uart_send_t send, uart_recv_t recv, flash_feed_t flash_feed,
-    flash_flush_t flash_flush, flash_reset_t flash_reset){
-    serial_api.send = send;
-    serial_api.recv = recv;
-    serial_api.flash_feed = flash_feed;
-    serial_api.flash_flush = flash_flush;
-    serial_api.flash_reset = flash_reset;
+void set_serial_api(serial_api_t api)
+{
+    serial_api = api;
 }
+
 
 bool check_valid_api()
 {

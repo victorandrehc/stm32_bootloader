@@ -20,6 +20,7 @@ set(STM32CUBEMX_GENERATED_FILES
         STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd.c
         STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd_ex.c
         STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c
+        STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_crc.c
         )
 add_library(${DRIVER_LIB}
         ${STM32CUBEMX_GENERATED_FILES})
@@ -34,6 +35,7 @@ target_include_directories(${DRIVER_LIB} PRIVATE
 target_compile_definitions(${DRIVER_LIB} PRIVATE
         -DUSE_HAL_DRIVER
         -DSTM32F401xE
+        -DHAL_CRC_MODULE_ENABLED
         )
 
 target_compile_options(${DRIVER_LIB} PRIVATE
