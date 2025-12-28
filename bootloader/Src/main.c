@@ -84,7 +84,8 @@ int main(void)
   }
   
   bootloader_api_ptr->jump_to_application();
-  printf("SHOULD NOT HAVE RETURNED\n");
+  printf("SHOULD NOT HAVE RETURNED RESETING IN DFU\n");
+  bootloader_api_ptr->reset(FIRMWARE_UPDATE);
   Error_Handler();
 }
 
