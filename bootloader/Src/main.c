@@ -65,7 +65,7 @@ int main(void)
 
   bool dfu = try_enter_DFU_mode();
 
-  if(dfu || 1)
+  if(dfu)
   {
     printf("Entering in DFU ...\n");
     set_serial_api(uart1_send, uart1_recv, flash_fw_feed, flash_fw_flush, flash_fw_reset);

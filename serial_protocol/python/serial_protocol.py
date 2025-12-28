@@ -75,10 +75,10 @@ class FirmwareUpdater:
 
 
 if __name__ == "__main__":
-    ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+    ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=5)
     frame_processor = serial_process_frame.FrameProcessor(ser)
     with open("firmware.bin", "rb") as f:
         firmware = f.read()
-        updater = FirmwareUpdater(frame_processor, firmware)
+        updater = FirmwareUpdater(frame_processor, firmware, 1024)
         updater.run()
 
