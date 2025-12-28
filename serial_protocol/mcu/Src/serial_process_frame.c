@@ -25,7 +25,7 @@ Prototol Package
 
 #define SOF 0xA5
 #define VERSION 0x01
-#define BUFFER_MAX_SIZE 1024
+#define BUFFER_MAX_SIZE (1*1024)
 #define TIMEOUT_MS 100
 // SOF(1) | VER (1) | CMD(1) | LEN(4)
 #define HEADER_SIZE 7 

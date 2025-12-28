@@ -69,7 +69,6 @@ class FirmwareUpdater:
 
             # ---- RESET ----
             elif self.state == State.RESET:
-                self.frame_processor.send_frame(self.frame_processor.CMD_RESET)
                 self.state = State.DONE
 
         print("Firmware update complete")
@@ -83,12 +82,3 @@ if __name__ == "__main__":
         updater = FirmwareUpdater(frame_processor, firmware)
         updater.run()
 
-    # frame_processor.send_frame(frame_processor.CMD_PING)  # PING
-
-    # if frame_processor.recv_ack_nack():
-    #     print("ACK received")
-    # else:
-    #     print("NACK received")
-
-    # frame_processor.send_frame(frame_processor.CMD_START,bytearray([11,0]))    
-    # ser.write(b'HELLO WORLD')

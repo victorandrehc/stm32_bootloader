@@ -1,6 +1,7 @@
 #include "main.h"
 #include "boot_config.h"
 #include "uart_handler.h"
+#include "flash_handler.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -67,7 +68,7 @@ int main(void)
   if(dfu || 1)
   {
     printf("Entering in DFU ...\n");
-    set_serial_api(uart1_send, uart1_recv);
+    set_serial_api(uart1_send, uart1_recv, flash_fw_feed, flash_fw_flush, flash_fw_reset);
     recv_firmware();
     bootloader_api_ptr->reset(APPLICATION_RESET);
   }

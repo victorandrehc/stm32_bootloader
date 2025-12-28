@@ -3,7 +3,7 @@
 
 extern UART_HandleTypeDef huart1;
 
-#define RX_BUFFER_SIZE 128
+#define RX_BUFFER_SIZE (1*1024)
 static uint8_t rxBuffer[RX_BUFFER_SIZE];
 volatile uint16_t rxHead = 0;
 volatile uint16_t rxTail = 0;

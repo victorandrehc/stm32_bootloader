@@ -11,6 +11,8 @@ set(SOURCE_FILES
         ../boot_control/Src/boot_config.c
         Src/uart_handler.h
         Src/uart_handler.c
+        Src/flash_handler.h
+        Src/flash_handler.c
         )
 
 set(EXECUTABLE ${PROJECT_NAME}_bootloader.out)

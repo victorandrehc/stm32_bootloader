@@ -87,20 +87,23 @@ serial_state_t process_start_state(size_t* fw_size, uint16_t* fw_crc)
     int ret = 0;
     serial_cmd_t cmd = CMD_UNKNOWN;
     size_t len = 0;
-     uint8_t* payload;
+    uint8_t* payload;
     ret = recv_frame(&cmd, &payload, &len);
     if (!ret){
         send_nack();
         return RESET_STATE;
     }
 
+    serial_api_t* serial_api = get_serial_api();
+    
     switch(cmd)
     {
         case CMD_START:
-            send_ack();
+            serial_api->flash_reset();
             *fw_size = get_fw_size(payload);
             *fw_crc = get_fw_crc(payload);
             printf("fw_size %x, crc %x\n",*fw_size,*fw_crc);
+            send_ack();
             return DATA_STATE;
         default:
             send_nack();
@@ -119,13 +122,16 @@ serial_state_t process_data_state()
         send_nack();
         return RESET_STATE;
     }
+    serial_api_t* serial_api = get_serial_api();
 
     switch(cmd){
         case CMD_DATA:
+            serial_api->flash_feed(payload,len);
             send_ack();
             // todo save on flash
             return DATA_STATE;
         case CMD_END: 
+            serial_api->flash_flush();
             send_ack();
             return END_STATE;
         default:
