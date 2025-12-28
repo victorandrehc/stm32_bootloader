@@ -35,7 +35,6 @@ target_include_directories(${DRIVER_LIB} PRIVATE
 target_compile_definitions(${DRIVER_LIB} PRIVATE
         -DUSE_HAL_DRIVER
         -DSTM32F401xE
-        -DHAL_CRC_MODULE_ENABLED
         )
 
 target_compile_options(${DRIVER_LIB} PRIVATE

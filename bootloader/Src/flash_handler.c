@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include "boot_config.h"
 #include "main.h"
-#include "stm32f4xx_hal_crc.h"
 
 typedef struct{
     const uint32_t sector_id; // e.g.: FLASH_SECTOR_2
@@ -201,8 +200,6 @@ int flash_fw_flush(void)
     flash_fw_flush_internal();
     return 0;
 }
-
-extern CRC_HandleTypeDef hcrc;
 
 static uint16_t crc16_ccitt(const uint8_t *data, size_t len) {
     uint16_t crc = 0xFFFF;

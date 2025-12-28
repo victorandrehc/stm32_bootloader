@@ -10,18 +10,13 @@
 #include <stdbool.h>
 #include <serial_protocol.h>
 
-#include "stm32f4xx_hal_crc.h"
-
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart1;
-CRC_HandleTypeDef hcrc;
-
 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_USART1_UART_Init(void);
-static void MX_CRC_Init(void);
 
 
 
@@ -55,7 +50,6 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
-  MX_CRC_Init();
   
   uart_start_it();
   init_boot_api();
@@ -216,12 +210,7 @@ static void MX_GPIO_Init(void)
 }
 
 
-void MX_CRC_Init(void)
-{
-  __HAL_RCC_CRC_CLK_ENABLE();  // enable CRC clock
-    hcrc.Instance = CRC;
-    HAL_CRC_Init(&hcrc);
-}
+
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
