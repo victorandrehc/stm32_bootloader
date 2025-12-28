@@ -26,11 +26,12 @@ class FrameProcessor(object):
     def send_frame(self, cmd, payload=b''):
         length = len(payload)
 
-        # Header: VER (1) | CMD (1) | LEN_L (1) | LEN_H (1)
-        header = struct.pack('<BBH', self.VER, cmd, length)  # exactly 4 bytes
+        # Header: VER (1) | CMD (1) | LEN (4)
+        header = struct.pack('<BBI', self.VER, cmd, length)  # exactly 6 bytes
 
         # # CRC16 over header + payload
         crc = crc16_ccitt(header + payload)
+        print (f"CRC: {crc:02x}")
 
         # Build final frame: SOF + header + payload + CRC16
         frame = struct.pack('B', self.SOF) + header + payload + struct.pack('<H', crc)

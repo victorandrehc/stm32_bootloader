@@ -8,9 +8,9 @@
 /*
 Prototol Package
 +--------+--------+--------+--------+--------+--------+--------+------+
-| SOF    | VER    | CMD    | LEN_L  | LEN_H  | PAYLOAD| CRC_L  | CRC_H|
+| SOF    | VER    | CMD    | LEN  | PAYLOAD| CRC_L  | CRC_H|
 +--------+--------+--------+--------+--------+--------+--------+------+
- 1 byte   1 byte   1 byte   1 byte   1 byte    N bytes   1 byte  1 byte
+ 1 byte   1 byte   1 byte   4 bytes  N bytes   1 byte  1 byte
 
 - SOF: 0xA5
 
@@ -27,6 +27,10 @@ Prototol Package
 #define VERSION 0x01
 #define BUFFER_MAX_SIZE 1024
 #define TIMEOUT_MS 100
+// SOF(1) | VER (1) | CMD(1) | LEN(4)
+#define HEADER_SIZE 7 
+// CRC_L | CRC_H 
+#define CRC_SIZE 2 
 
 
 static uint8_t buffer[BUFFER_MAX_SIZE];
@@ -61,7 +65,7 @@ bool recv_frame(serial_cmd_t *cmd, uint8_t **payload, size_t *len){
     uint8_t* header = buffer;
     size_t pivot = 0;
     int ret = -1;
-    while(pivot<5){
+    while(pivot<HEADER_SIZE){
         ret = serial_api->recv(&header[pivot], 1, TIMEOUT_MS);
         if(ret<=0){
            return false;
@@ -72,20 +76,20 @@ bool recv_frame(serial_cmd_t *cmd, uint8_t **payload, size_t *len){
         pivot++;
     }
     
-    // print_frame(header,5);
+    // print_frame(header,HEADER_SIZE);
     *cmd = header[2];
-    *len = header[3] | (header[4] << 8);
+    *len = header[3] | (header[4] << 8) | (header[5] << 16) | (header[6]<<24);
     printf("SOF:%x, ver %x, cmd %x, len %x\n",header[0], header[1], *cmd, *len);
 
     //remove header space and crc space
-    if(*len > BUFFER_MAX_SIZE - 5 - 2){
+    if(*len > BUFFER_MAX_SIZE - HEADER_SIZE - CRC_SIZE){
         printf("Payload Bigger than allocated buffer\n");
         return false;
     }
     
     if(*len > 0 )
     {
-        uint8_t* payload_internal = &buffer[5];
+        uint8_t* payload_internal = &buffer[HEADER_SIZE];
         *payload = payload_internal;
         ret = serial_api->recv(payload_internal, *len, TIMEOUT_MS);
         if(ret<=0){
@@ -93,20 +97,21 @@ bool recv_frame(serial_cmd_t *cmd, uint8_t **payload, size_t *len){
             return false;
         }
         
-        print_frame(payload_internal,*len);
+        // print_frame(payload_internal,*len);
     }
 
-    uint8_t* crc_buffer = &buffer[5 + (*len)];
+    uint8_t* crc_buffer = &buffer[HEADER_SIZE + (*len)];
     ret = serial_api->recv(crc_buffer, 2, TIMEOUT_MS);
      if(ret<=0){
         printf("Timeout on recevining crc");
         return -1;
     }
-    // print_frame(crc_buffer,2);
+    // print_frame(crc_buffer,CRC_SIZE);
     uint16_t crc_recv = crc_buffer[0] | (crc_buffer[1] <<8 );
-    size_t buffer_crc_size = *len + 4;
-    uint16_t crc_calc = crc16_ccitt(&buffer[1], buffer_crc_size);
-    // print_frame(&buffer[1], buffer_crc_size);
+    uint8_t* crcable_buffer = &buffer[1];
+    size_t crcable_buffer_size = *len + HEADER_SIZE - 1; //SOF is not in CRC
+    uint16_t crc_calc = crc16_ccitt(crcable_buffer, crcable_buffer_size);
+    // print_frame(crcable_buffer, crcable_buffer_size);
     // printf("crc_calc: %0x, crc_recv: %x\n",crc_calc,crc_recv);
     return crc_calc == crc_recv;
 }

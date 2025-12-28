@@ -48,11 +48,13 @@ static const char* get_serial_state_str(const serial_state_t serial_state){
 
 
 static size_t get_fw_size(uint8_t* payload){
-    return 0;
+    size_t ret = payload[0] | (payload[1]<<8) | (payload[2]<<16) | (payload[3]<<24);
+    return ret;
 }
 
 static uint16_t get_fw_crc(uint8_t* payload){
-    return 0;
+    size_t ret = payload[4] | (payload[5]<<8);
+    return ret;
 }
 
 serial_state_t process_ping_state()
