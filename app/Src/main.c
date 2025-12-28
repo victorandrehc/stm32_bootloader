@@ -35,6 +35,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   printf("STARTING APPLICATION\n");
+  reset_called = false; //set reset to false to avoid spurious IRQs
   while (!reset_called)
   {
     blink(500);

@@ -16,6 +16,16 @@ static void deinit_peripherals(void)
     // Reset SysTick interrupt
     NVIC_ClearPendingIRQ(SysTick_IRQn);
 
+    /* STM32F4 has up to 240 external IRQs → 8 registers */
+    for (uint32_t i = 0; i < 8; i++)
+    {
+        NVIC->ICER[i] = 0xFFFFFFFF;   // Disable IRQs
+        NVIC->ICPR[i] = 0xFFFFFFFF;   // Clear pending IRQs
+    }
+
+    __DSB();
+    __ISB();
+
     HAL_RCC_DeInit();
 
     // Clear pending faults
