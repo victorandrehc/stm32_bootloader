@@ -55,6 +55,28 @@ static uint16_t crc16_ccitt(const uint8_t *data, size_t len) {
     return crc;
 }
 
+static const char* get_cmd_str(const serial_cmd_t cmd){
+    switch(cmd){
+        case CMD_UNKNOWN:
+            return "CMD_UNKNOWN";
+        case CMD_PING:
+            return "CMD_PING";
+        case CMD_START:
+            return "CMD_START";
+        case CMD_DATA:
+            return "CMD_DATA";
+        case CMD_END:
+            return "CMD_END";
+        case CMD_RESET:
+            return "CMD_RESET";
+        case CMD_ACK:
+            return "CMD_ACK";
+        case CMD_NACK:
+            return "CMD_NACK";
+        default:
+            return "NOT_A_CMD";
+    }
+}
 
 bool recv_frame(serial_cmd_t *cmd, uint8_t **payload, size_t *len){
     if(!check_valid_api()){
@@ -79,7 +101,7 @@ bool recv_frame(serial_cmd_t *cmd, uint8_t **payload, size_t *len){
     // print_frame(header,HEADER_SIZE);
     *cmd = header[2];
     *len = header[3] | (header[4] << 8) | (header[5] << 16) | (header[6]<<24);
-    printf("SOF:%x, ver %x, cmd %x, len %x\n",header[0], header[1], *cmd, *len);
+    printf("SOF:0x%x, ver 0x%x, cmd %s[0x%x], len 0x%x\n",header[0], header[1], get_cmd_str(*cmd), *cmd, *len);
 
     //remove header space and crc space
     if(*len > BUFFER_MAX_SIZE - HEADER_SIZE - CRC_SIZE){
