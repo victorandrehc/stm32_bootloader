@@ -101,7 +101,6 @@ serial_state_t process_start_state(size_t* fw_size, uint16_t* fw_crc)
     switch(cmd)
     {
         case CMD_START:
-            serial_api->flash_reset();
             *fw_size = get_fw_size(payload);
             *fw_crc = get_fw_crc(payload);
             printf("fw_size 0x%x, max_fw_size 0x%x, crc 0x%lx\n",*fw_size,serial_api->max_fw_size,*fw_crc);
@@ -110,6 +109,7 @@ serial_state_t process_start_state(size_t* fw_size, uint16_t* fw_crc)
                 send_nack();
                 return RESET_STATE;
             }
+            serial_api->flash_reset();
             send_ack();
             return DATA_STATE;
         default:

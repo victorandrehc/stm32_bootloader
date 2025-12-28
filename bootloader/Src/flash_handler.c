@@ -9,7 +9,7 @@ typedef struct{
     const uint32_t sector_id; // e.g.: FLASH_SECTOR_2
     const uint32_t start_addr;
     const size_t length_bytes;
-    bool erased;
+    bool used;
 } flash_handler_t;
 
 #define BYTES_TO_WORDS(SIZE) (SIZE/sizeof(uint32_t))
@@ -45,7 +45,7 @@ static void print_buffer(const uint8_t *buf, size_t len)
 
 static int flash_erase_once(flash_handler_t* current_sector)
 {
-    if (current_sector->erased)
+    if (current_sector->used)
     {
         return 0;
     }
@@ -64,7 +64,6 @@ static int flash_erase_once(flash_handler_t* current_sector)
     int ret = 0;
     if (HAL_FLASHEx_Erase(&erase, &sectorError) == HAL_OK)
     {
-        current_sector->erased = true;
         ret = 0;
     }
     else
@@ -92,16 +91,17 @@ static int flash_write_sector_internal(const uint8_t *buf)
 {
    
     flash_handler_t* current_sector = &flash_handler_array[current_sector_pivot];
-     printf("Writting sector ADDR: 0x%08lx SIZE: %u bytes\n", current_sector->start_addr, current_sector->length_bytes);
-    if(current_sector->erased == false)
+    if(current_sector->used)
     {
-       const int ret = flash_erase_once(current_sector);
-       if(ret)
-       {
         return -1;
-       }
     }
-
+    printf("Writting sector ADDR: 0x%08lx SIZE: %u bytes\n", current_sector->start_addr, current_sector->length_bytes);
+    int ret = flash_erase_once(current_sector);
+    if(ret)
+    {
+        return -1;
+    }
+  
     uint32_t address = current_sector->start_addr;
     const size_t length_words = BYTES_TO_WORDS(current_sector->length_bytes);
     const uint32_t *data = (const uint32_t *)buf;
@@ -109,7 +109,7 @@ static int flash_write_sector_internal(const uint8_t *buf)
     __disable_irq();
     HAL_FLASH_Unlock();
     
-    int ret =0;
+    ret =0;
     for (size_t i = 0; i < length_words; i++)
     {
         if (HAL_FLASH_Program(
@@ -125,11 +125,15 @@ static int flash_write_sector_internal(const uint8_t *buf)
 
     HAL_FLASH_Lock();
     __enable_irq();
+    if (ret == 0 )
+    {
+        current_sector->used = true;
+    }
     return ret;
 }
 
 
-void flash_write_sector()
+static void flash_write_sector()
 {
     const int ret = flash_write_sector_internal(sector);
     if(ret == 0)
@@ -140,6 +144,12 @@ void flash_write_sector()
     {
         printf("WRITING IN SECTOR FAILED\n");
     }
+}
+
+static void pivot_reset()
+{
+    pivot = 0;
+    memset(sector, 0xFF, SECTOR_SIZE_BYTES_MAX);
 }
 
 static void flash_fw_feed_internal(const uint8_t *buf, size_t len)
@@ -160,7 +170,7 @@ static void flash_fw_feed_internal(const uint8_t *buf, size_t len)
         {
             printf("SECTOR IS FULL\n");
             flash_write_sector();
-            flash_fw_reset();   // reset pivot + buffer
+            pivot_reset();   // reset pivot + buffer
         }
     }
 }
@@ -179,14 +189,17 @@ static void flash_fw_flush_internal(void)
     memset(&sector[pivot], 0xFF, current_sector->length_bytes - pivot);
     //write sector
     flash_write_sector();
-    flash_fw_reset();  // reset pivot + buffer
+    pivot_reset();  // reset pivot + buffer
 }
 
 void flash_fw_reset(void)
 {
-    // print_buffer(sector,SECTOR_SIZE_BYTES);
-    pivot = 0;
-    memset(sector, 0xFF, SECTOR_SIZE_BYTES_MAX);
+    pivot_reset();
+    for(size_t i;i<FLASH_HANDLER_ARRAY_SIZE;i++)
+    {
+        flash_handler_t* sector = &flash_handler_array[i];
+        sector->used = false;
+    }
 }
 
 int flash_fw_feed(const uint8_t *buf, size_t len)
@@ -211,6 +224,7 @@ static uint16_t crc16_ccitt(const uint8_t *data, size_t len) {
     return crc;
 }
 
+// this function is called externally after the firmware is flashed
 bool fw_crc_check(uint16_t crc_recv, size_t fw_len)
 {
     flash_handler_t* first_sector = &flash_handler_array[0];
