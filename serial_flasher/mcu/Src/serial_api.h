@@ -24,7 +24,6 @@ bool check_valid_api(void);
  * This function returns a pointer to the serial API structure that
  * has been previously set using `set_serial_api()`.
  *
- * @return serial_api_t* Pointer to the currently set serial API,
- * or NULL if no API has been set.
+ * @return serial_api_t* Pointer to the currently set serial API.
  */
 serial_api_t* get_serial_api(void);

@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-static serial_api_t serial_api = NULL;
+static serial_api_t serial_api = {0};
 
 void set_serial_api(serial_api_t api)
 {
