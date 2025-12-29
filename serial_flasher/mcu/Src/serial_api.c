@@ -1,9 +1,9 @@
-#include "serial_process_frame.h"
 #include "serial_flasher.h"
+#include "serial_process_frame.h"
 
 #include <stdbool.h>
 
-static serial_api_t serial_api;
+static serial_api_t serial_api = NULL;
 
 void set_serial_api(serial_api_t api)
 {
