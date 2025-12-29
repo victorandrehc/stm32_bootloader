@@ -113,7 +113,7 @@ The following table shows the flash memory usage in this demo. 32 KB are reserve
 
 
 
-# Flash Sector Layout
+### Flash Sector Layout
 
 The following table shows the flash memory layout by sector. Erase and write operations must occur per sector, handled in `bootloader/Src/flash_handler.c`
 
@@ -128,25 +128,73 @@ The following table shows the flash memory layout by sector. Erase and write ope
 | 6      | 0x08040000   | 0x0805FFFF   | 128 KB | Unused           | Free / reserved                              |
 | 7      | 0x08060000   | 0x0807FFFF   | 128 KB | Unused           | Free / reserved                              |
 
+## Serial Protocol
+
+The application firmware is programmed into the MCU by the bootloader over a UART connection using a custom serial protocol.
+The following diagram illustrates the command exchange and bootloader state transitions during the firmware update process.
 
 ```mermaid
-stateDiagram-v2
-    [*] --> PING_STATE
+sequenceDiagram
+    autonumber
+    participant Host as Host PC (Python FrameProcessor)
+    participant MCU as MCU Bootloader (State Machine)
 
-    PING_STATE --> START_STATE : CMD_PING / ACK
-    PING_STATE --> PING_STATE : Other / NACK
+    Note over Host,MCU: Transport: UART\nFrame: SOF | VER | CMD | LEN | PAYLOAD | CRC16
 
-    START_STATE --> DATA_STATE : CMD_START / ACK
-    START_STATE --> RESET_STATE : Other / NACK
-    START_STATE --> RESET_STATE : FW size too large / NACK
-    START_STATE --> RESET_STATE : Flash write header fail / NACK
+    %% --- PING ---
+    Host->>MCU: CMD_PING
+    MCU->>Host: CMD_ACK
+    Note over MCU: PING_STATE → START_STATE
 
-    DATA_STATE --> DATA_STATE : CMD_DATA / ACK
-    DATA_STATE --> END_STATE : CMD_END / CRC OK / ACK
-    DATA_STATE --> RESET_STATE : CMD_END / CRC Fail / NACK
-    DATA_STATE --> RESET_STATE : Other / NACK
+    %% --- START ---
+    Host->>MCU: CMD_START (fw_size, fw_crc)
+    MCU->>MCU: Validate size\nReset flash\nWrite header
+    MCU->>Host: CMD_ACK
+    Note over MCU: START_STATE → DATA_STATE
 
-    RESET_STATE --> PING_STATE : Recovery
+    %% --- DATA LOOP ---
+    loop Firmware chunks
+        Host->>MCU: CMD_DATA (chunk)
+        MCU->>MCU: flash_feed(chunk)
+        MCU->>Host: CMD_ACK
+    end
+
+    %% --- END ---
+    Host->>MCU: CMD_END
+    MCU->>MCU: flash_flush()\nCRC check
+    alt CRC OK
+        MCU->>Host: CMD_ACK
+        Note over MCU: DATA_STATE → END_STATE
+    else CRC FAIL
+        MCU->>Host: CMD_NACK
+        Note over MCU: → RESET_STATE → PING_STATE
+    end
+
+    %% --- RESET ---
+    Host->>MCU: CMD_RESET
+    MCU->>MCU: Reboot into application
+
+```
+
+Each communication message is transmitted as a framed packet with the following format:
+
+```
++--------+--------+--------+----------+----------+--------+--------+
+| SOF    | VER    | CMD    | LEN      | PAYLOAD  | CRC_L  | CRC_H  |
++--------+--------+--------+----------+----------+--------+--------+
+| 1 byte | 1 byte | 1 byte | 4 bytes  | N bytes  | 1 byte | 1 byte |
++--------+--------+--------+----------+----------+--------+--------+
+SOF: 0xA5
+
+VER: protocol version (starts at 0x01)
+
+CMD: command ID
+
+LEN: payload length (little-endian)
+
+PAYLOAD: command-specific data
+
+CRC: CRC16-CCITT (ccitt-false) calculated over: SOF | VER | CMD | LEN | PAYLOAD
 ```
 
 
