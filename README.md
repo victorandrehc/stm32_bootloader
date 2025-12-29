@@ -205,7 +205,7 @@ In this project, the bootloader resides at the beginning of flash and the applic
 After this sequence, execution continues entirely within the application as if it had been started directly after reset.
 
 
-## Serial FLasher
+## Serial Flasher
 
 The application firmware is programmed into the MCU by the bootloader over a UART connection using a custom serial protocol.
 The following diagram illustrates the command exchange and bootloader state transitions during the firmware update process.
