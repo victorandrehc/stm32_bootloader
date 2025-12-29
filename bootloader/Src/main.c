@@ -30,7 +30,7 @@ void blink(int delay_ms){
 static volatile bool button_pressed = false;
 bool try_enter_DFU_mode(){
   button_pressed = false;
-  bool dfu = ((reset_reason_e)bootloader_api_ptr->boot_info.reset_reason_uint == FIRMWARE_UPDATE);
+  bool dfu = (bootloader_api_ptr->boot_info.magic == BOOT_INFO_MAGIC && (reset_reason_e)bootloader_api_ptr->boot_info.reset_reason_uint == FIRMWARE_UPDATE);
   const uint16_t delay_ms = 1000u;
   const int num_tries = 3;
   for(int i =0; i < num_tries && !dfu; i++){
@@ -61,12 +61,16 @@ int main(void)
   printf("/_____/\\____/\\____/\\__/\n");
   printf("\n");
   printf("Press Button to Enter DFU mode\n");
+  const char* reboot_reason = get_reset_reason_string();
+  printf("MAGIC NUMBER: 0x%08lx RESET_REASON: %s\n",bootloader_api_ptr->boot_info.magic, reboot_reason);
+
 
   bool dfu = try_enter_DFU_mode();
 
   if(dfu)
   {
     printf("Entering in DFU ...\n");
+    bootloader_api_ptr->boot_info.reset_reason_uint = POWER_CYCLE;
     const size_t max_fw_size = get_max_fw_size();
     serial_api_t serial_api = {uart1_send, uart1_recv, flash_fw_feed, flash_fw_flush, flash_fw_reset, fw_crc_check, max_fw_size};
     set_serial_api(serial_api);
@@ -75,9 +79,7 @@ int main(void)
   }
 
 
-  const char* reboot_reason = get_reset_reason_string();
-  printf("MAGIC NUMBER: 0x%08lx RESET_REASON: %s\n",bootloader_api_ptr->boot_info.magic, reboot_reason);
-
+ 
   if(bootloader_api_ptr != (void*)(BOOT_CONFIG_START_ADDR))
   {
     printf("BootLoader API not in place\n");
