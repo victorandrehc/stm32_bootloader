@@ -92,7 +92,7 @@ The bootloader will remain in DFU mode until it is either reset or a new firmwar
 
 2. Run the Python flasher:
    ```bash
-   python serial_protocol/python/serial_protocol.py \
+   python serial_flasher/python/serial_flasher.py \
      build/app/cmake_stm32_app.bin \
      --tty_port /dev/ttyUSB0 \
      --baudrate 115200

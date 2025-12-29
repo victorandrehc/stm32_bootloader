@@ -1,5 +1,5 @@
 #include "serial_process_frame.h"
-#include "serial_protocol.h"
+#include "serial_flasher.h"
 
 #include <stdbool.h>
 

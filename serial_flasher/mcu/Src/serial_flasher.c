@@ -1,4 +1,4 @@
-#include "serial_protocol.h"
+#include "serial_flasher.h"
 
 #include "serial_api.h"
 #include "serial_process_frame.h"

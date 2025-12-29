@@ -5,7 +5,7 @@
 #include "uart_handler.h"
 
 #include <errno.h>
-#include <serial_protocol.h>
+#include <serial_flasher.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/stat.h>

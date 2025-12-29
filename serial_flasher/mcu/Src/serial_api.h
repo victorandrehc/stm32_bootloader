@@ -1,6 +1,6 @@
 #pragma once
 
-#include "serial_protocol.h"
+#include "serial_flasher.h"
 
 #include <stdbool.h>
 #include <stddef.h>

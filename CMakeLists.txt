@@ -51,7 +51,7 @@ set(CPU_PARAMETERS
         -mfloat-abi=hard)
 
 add_subdirectory(Drivers)
-add_subdirectory(serial_protocol/mcu)
+add_subdirectory(serial_flasher/mcu)
 add_subdirectory(bootloader)
 add_subdirectory(app)
 
