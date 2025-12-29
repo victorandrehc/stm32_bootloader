@@ -91,14 +91,13 @@ void SysTick_Handler(void)
     HAL_IncTick();
 }
 
-
 void EXTI15_10_IRQHandler(void)
 {
-  /* Check if EXTI line is pending for B1_Pin */
-  HAL_GPIO_EXTI_IRQHandler(B1_Pin);
+    /* Check if EXTI line is pending for B1_Pin */
+    HAL_GPIO_EXTI_IRQHandler(B1_Pin);
 }
 
 void USART1_IRQHandler(void)
 {
-    HAL_UART_IRQHandler(&huart1); // This calls HAL_UART_RxCpltCallback() when a byte is received
+    HAL_UART_IRQHandler(&huart1);  // This calls HAL_UART_RxCpltCallback() when a byte is received
 }

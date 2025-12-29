@@ -234,8 +234,8 @@ extern "C"
 
 /* Section 3: Common PHY Registers */
 
-#define PHY_BCR ((uint16_t) 0x0000U)                     /*!< Transceiver Basic Control Register   */
-#define PHY_BSR ((uint16_t) 0x0001U)                     /*!< Transceiver Basic Status Register    */
+#define PHY_BCR ((uint16_t) 0x0000U) /*!< Transceiver Basic Control Register   */
+#define PHY_BSR ((uint16_t) 0x0001U) /*!< Transceiver Basic Status Register    */
 
 #define PHY_RESET                   ((uint16_t) 0x8000U) /*!< PHY Reset */
 #define PHY_LOOPBACK                ((uint16_t) 0x4000U) /*!< Select loop-back mode */
@@ -248,12 +248,12 @@ extern "C"
 #define PHY_POWERDOWN               ((uint16_t) 0x0800U) /*!< Select the power down mode           */
 #define PHY_ISOLATE                 ((uint16_t) 0x0400U) /*!< Isolate PHY from MII                 */
 
-#define PHY_AUTONEGO_COMPLETE ((uint16_t) 0x0020U)       /*!< Auto-Negotiation process completed   */
-#define PHY_LINKED_STATUS     ((uint16_t) 0x0004U)       /*!< Valid link established               */
-#define PHY_JABBER_DETECTION  ((uint16_t) 0x0002U)       /*!< Jabber condition detected            */
+#define PHY_AUTONEGO_COMPLETE ((uint16_t) 0x0020U) /*!< Auto-Negotiation process completed   */
+#define PHY_LINKED_STATUS     ((uint16_t) 0x0004U) /*!< Valid link established               */
+#define PHY_JABBER_DETECTION  ((uint16_t) 0x0002U) /*!< Jabber condition detected            */
 
 /* Section 4: Extended PHY Registers */
-#define PHY_SR ((uint16_t) 0x10U)              /*!< PHY status register Offset                      */
+#define PHY_SR ((uint16_t) 0x10U) /*!< PHY status register Offset                      */
 
 #define PHY_SPEED_STATUS  ((uint16_t) 0x0002U) /*!< PHY Speed mask                                  */
 #define PHY_DUPLEX_STATUS ((uint16_t) 0x0004U) /*!< PHY Duplex mask                                 */

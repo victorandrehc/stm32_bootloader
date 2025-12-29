@@ -1,10 +1,10 @@
 #pragma once
 
 #include "serial_protocol.h"
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
 
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 bool check_valid_api();
 
