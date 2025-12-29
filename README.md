@@ -26,7 +26,7 @@ The following tools are required to build, flash, and debug the project:
 
 1. Configure and build the project using:
    ```bash
-   ./scripts/build_project.sh
+   ./scripts/build_project.sh --toolchain path/to/arm-none-eabi/bin -b Debug
    ```
 
 2. Flash the bootloader:
