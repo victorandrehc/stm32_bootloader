@@ -109,7 +109,7 @@ The following table shows the flash memory usage in this demo. 32 KB are reserve
 |---------------|--------------|--------------|------------|--------------------|------------------------|
 | Bootloader    | 0x08000000   | 0x08007FFF   | 32 KB      | MCU bootloader      | Sector 0, Sector 1      |
 | FW Header     | 0x08008000   | 0x080081FF   | 512 B      | Firmware metadata   | Part of Sector 2        |
-| Application   | 0x08008200   | 0x0807FFFF   | 95.5 KB | Main application  | Part of Sector 2, Sector 3 and 4 |
+| Application   | 0x08008200   | 0x0801FFFF   | 95.5 KB | Main application  | Part of Sector 2, Sector 3 and 4 |
 
 
 
@@ -126,9 +126,86 @@ The following table shows the flash memory layout by sector. Erase and write ope
 | 4      | 0x08010000   | 0x0801FFFF   | 64 KB  | Application      | Entire sector used by application           |
 | 5      | 0x08020000   | 0x0803FFFF   | 128 KB | Unused           | Free / reserved                              |
 | 6      | 0x08040000   | 0x0805FFFF   | 128 KB | Unused           | Free / reserved                              |
-| 7      | 0x08060000   | 0x0807FFFF   | 128 KB | Unused           | Free / reserved                              |
+| 7      | 0x08060000   | 0x0807FFFF   | 128 KB | Unused           | Free / reserved                            
+  |
 
-## Serial Protocol
+## ARM Vector Table and Bootloader Jump
+Below is a simplified ASCII representation of a Cortex-M vector table as stored in flash memory:
+
+| Offset  | Vector Entry           | Description                                         |
+|---------|-----------------------|-----------------------------------------------------|
+| 0x00    | Initial MSP Value      | Initial value loaded into the Main Stack Pointer on reset |
+| 0x04    | Reset Handler          | Entry point of the firmware, executed after reset  |
+| 0x08    | NMI Handler            | Non-Maskable Interrupt handler                     |
+| 0x0C    | HardFault Handler      | Hard fault exception handler                        |
+| 0x10    | MemManage Handler      | Memory management fault handler                     |
+| 0x14    | BusFault Handler       | Bus fault exception handler                          |
+| 0x18    | UsageFault Handler     | Usage fault exception handler                        |
+| 0x1C    | Reserved               | Reserved by ARM                                     |
+| 0x20    | Reserved               | Reserved by ARM                                     |
+| 0x24    | Reserved               | Reserved by ARM                                     |
+| 0x28    | Reserved               | Reserved by ARM                                     |
+| 0x2C    | SVCall Handler         | Supervisor call handler                             |
+| 0x30    | Debug Monitor Handler  | Debug monitor exception handler                     |
+| 0x34    | Reserved               | Reserved by ARM                                     |
+| 0x38    | PendSV Handler         | PendSV exception handler                             |
+| 0x3C    | SysTick Handler        | SysTick timer interrupt handler                     |
+| 0x40+   | IRQn Handlers          | Peripheral interrupt handlers (IRQ0, IRQ1, ...)    |
+
+
+
+Each entry is a 32-bit word containing either an initial value or a function pointer to an exception or interrupt handler.
+
+On ARM Cortex-M microcontrollers, the vector table is a fixed data structure located at the beginning of the firmware image. It contains the initial execution context and the addresses of all exception and interrupt handlers.
+
+The first two entries of the vector table are critical:
+
+1. Initial Stack Pointer (MSP) – Loaded automatically into the Main Stack Pointer on reset.
+
+2. Reset Handler Address – The entry point of the firmware, executed immediately after reset.
+
+Subsequent entries contain the addresses of fault handlers, system exceptions, and peripheral interrupt service routines (ISRs).
+
+By default, the vector table is expected at address 0x08000000, but Cortex-M devices allow relocating it using the VTOR (Vector Table Offset Register).
+
+### Bootloader to Application Jump
+
+In this project, the bootloader resides at the beginning of flash and the application is located at a higher address (0x08008200). To transfer execution to the application, the bootloader performs the following steps:
+
+1. Validate the Application
+    
+    The bootloader checks the firmware header (CRC, size, etc.) to ensure the application image is valid and coherent.
+
+2.  De-initialize Peripherals
+    
+    All peripherals used by the bootloader are reset or disabled to avoid side effects in the application.
+
+3. Relocate the Vector Table
+
+    The SCB->VTOR register is updated to point to the application's vector table:
+
+    ```c
+    SCB->VTOR = APP_START_ADDRESS;
+    ```
+
+4. Set the Main Stack Pointer (MSP)
+
+    The MSP is loaded with the first word of the application's vector table:
+    ```c
+    __set_MSP(*(uint32_t *)APP_START_ADDRESS);
+    ```
+5. Jump to the Application Reset Handler
+
+    The bootloader reads the second word of the vector table and jumps to it as a function pointer:
+    ```c
+    size_t app_reset_handler = *(volatile size_t*) (APP_START_ADDRESS + 4);
+    ((void (*)(void)) app_reset_handler)(); //should never return
+    ```
+
+After this sequence, execution continues entirely within the application as if it had been started directly after reset.
+
+
+## Serial FLasher
 
 The application firmware is programmed into the MCU by the bootloader over a UART connection using a custom serial protocol.
 The following diagram illustrates the command exchange and bootloader state transitions during the firmware update process.
