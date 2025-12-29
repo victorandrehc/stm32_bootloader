@@ -130,7 +130,7 @@ The following table shows the flash memory layout by sector. Erase and write ope
   |
 
 ## ARM Vector Table and Bootloader Jump
-Below is a simplified ASCII representation of a Cortex-M vector table as stored in flash memory:
+Below is a simplified representation of a Cortex-M vector table as stored in flash memory:
 
 | Offset  | Vector Entry           | Description                                         |
 |---------|-----------------------|-----------------------------------------------------|
