@@ -195,7 +195,7 @@ static void flash_fw_flush_internal(void)
 void flash_fw_reset(void)
 {
     pivot_reset();
-    for(size_t i;i<FLASH_HANDLER_ARRAY_SIZE;i++)
+    for(size_t i=0;i<FLASH_HANDLER_ARRAY_SIZE;i++)
     {
         flash_handler_t* sector = &flash_handler_array[i];
         sector->used = false;
