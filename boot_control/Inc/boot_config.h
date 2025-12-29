@@ -64,7 +64,6 @@ typedef enum reset_reason_e{
 typedef struct PACKED boot_info_t{
     uint32_t magic;
     uint32_t reset_reason_uint;
-    uint32_t fw_version;
     uint32_t reserved[5];    
 }boot_info_t;
 
