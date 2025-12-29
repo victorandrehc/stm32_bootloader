@@ -110,6 +110,12 @@ serial_state_t process_start_state(size_t* fw_size, uint16_t* fw_crc)
                 return RESET_STATE;
             }
             serial_api->flash_reset();
+            ret =serial_api->fw_write_header(*fw_crc, *fw_size);
+            if(ret)
+            {
+                send_nack();
+                return RESET_STATE;
+            }
             send_ack();
             return DATA_STATE;
         default:

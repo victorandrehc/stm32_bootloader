@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "boot_config.h"
 #include "main.h"
+#include <assert.h>
 
 typedef struct{
     const uint32_t sector_id; // e.g.: FLASH_SECTOR_2
@@ -228,10 +229,43 @@ static uint16_t crc16_ccitt(const uint8_t *data, size_t len) {
 bool fw_crc_check(uint16_t crc_recv, size_t fw_len)
 {
     flash_handler_t* first_sector = &flash_handler_array[0];
-    const uint8_t* data = (const uint8_t*)(first_sector->start_addr);
+    const uint8_t* data = (const uint8_t*)(first_sector->start_addr + sizeof(fw_header_t));
     uint16_t crc = crc16_ccitt(data, fw_len);
     printf("FW CRC CALC: 0x%x RECV: 0x%x\n", crc, crc_recv);
     return crc == crc_recv;
-
 }
 
+int fw_write_header(uint16_t crc_recv, size_t fw_len)
+{
+    flash_handler_t* current_sector = &flash_handler_array[current_sector_pivot];
+    if (pivot!=0 || current_sector->sector_id != FLASH_SECTOR_2)
+    {
+        printf("HEADER NOT BEING WRITTEN IN THE BEGINNING OF THE SECOND SECTOR\n");
+        return -1;
+    }
+    fw_header_t fw_header = {0};
+    fw_header.magic = BOOT_INFO_MAGIC;
+    fw_header.fw_size = fw_len;
+    fw_header.crc = crc_recv;
+    flash_fw_feed_internal((uint8_t*)&fw_header, sizeof(fw_header_t));
+    return 0;
+}
+
+int fw_check_header(void)
+{
+    flash_handler_t* first_sector = &flash_handler_array[0];
+    fw_header_t* fw_header = (fw_header_t*)(first_sector->start_addr);
+    printf("FW HEADER - MAGIC: 0x%lx FW_SIZE: 0x%lx CRC: 0x%lx\n",fw_header->magic, fw_header->fw_size, fw_header->crc);
+    if(fw_header->magic != BOOT_INFO_MAGIC)
+    {
+        printf("MAGIC NUMBER MISMATCH\n");
+        return -1;
+    }
+    const bool ret = fw_crc_check(fw_header->crc,fw_header->fw_size);
+    if (!ret)
+    {
+        printf("CRC MISMATCH\n");
+        return -1;
+    }
+    return 0;
+}

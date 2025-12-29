@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <assert.h>
 
 #ifdef __GNUC__
 #define PACKED __attribute__((packed))
@@ -34,11 +35,22 @@
 #define FLASH_SECTOR_7_START_ADDR 0x08060000
 #define FLASH_SECTOR_7_SIZE (128*1024)
 
-
+#define FW_HEADER_SIZE 0x200
 #define BOOT_START_ADDR FLASH_SECTOR_0_START_ADDR
-#define APP_START_ADDR 0x8008200
+#define APP_START_ADDR (FLASH_SECTOR_2_START_ADDR + FW_HEADER_SIZE)
 #define APP_SECTOR_SIZE FLASH_SECTOR_2_SIZE
 #define BOOT_CONFIG_START_ADDR 0x20017c00
+
+typedef struct __attribute__((packed, aligned(4)))
+{
+    uint32_t magic;
+    uint32_t fw_size;   // bytes (excluding header)
+    uint32_t crc;       // CRC of firmware image only
+    uint8_t reserved[FW_HEADER_SIZE - 3*sizeof(uint32_t)];   // reserved bits to ensure header size is correct and future use
+} fw_header_t;
+
+_Static_assert(sizeof(fw_header_t) == FW_HEADER_SIZE, "FIRMWARE HEADER SIZE MISMATCH");
+
 
 
 typedef enum reset_reason_e{

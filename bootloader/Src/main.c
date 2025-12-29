@@ -70,15 +70,21 @@ int main(void)
   if(dfu)
   {
     printf("Entering in DFU ...\n");
-    bootloader_api_ptr->boot_info.reset_reason_uint = POWER_CYCLE;
+    // write application reset as reason to avoid DFU mode loop in soft reboots while debugging
+    bootloader_api_ptr->boot_info.reset_reason_uint = APPLICATION_RESET;
     const size_t max_fw_size = get_max_fw_size();
-    serial_api_t serial_api = {uart1_send, uart1_recv, flash_fw_feed, flash_fw_flush, flash_fw_reset, fw_crc_check, max_fw_size};
+    serial_api_t serial_api = {uart1_send, uart1_recv, flash_fw_feed, flash_fw_flush, flash_fw_reset, fw_crc_check, fw_write_header, max_fw_size};
     set_serial_api(serial_api);
     recv_firmware();
     bootloader_api_ptr->reset(APPLICATION_RESET);
   }
 
-
+  int ret = fw_check_header();
+  if(ret)
+  {
+    printf("HEADER MISMATCH\n");
+    bootloader_api_ptr->reset(FIRMWARE_UPDATE);
+  }
  
   if(bootloader_api_ptr != (void*)(BOOT_CONFIG_START_ADDR))
   {
