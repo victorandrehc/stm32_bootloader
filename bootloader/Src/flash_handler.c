@@ -201,6 +201,7 @@ void flash_fw_reset(void)
         flash_handler_t* sector = &flash_handler_array[i];
         sector->used = false;
     }
+    current_sector_pivot = 0;
 }
 
 int flash_fw_feed(const uint8_t *buf, size_t len)
