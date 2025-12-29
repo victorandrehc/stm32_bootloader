@@ -58,7 +58,7 @@ target_compile_options(${EXECUTABLE} PRIVATE
         $<$<CONFIG:Release>:-Os>)
 
 
-set(LINKING_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/stm32f401.ld)
+set(LINKING_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/stm32f401_bootloader.ld)
 
 target_link_options(${EXECUTABLE} PRIVATE
         -T${LINKING_SCRIPT}
@@ -75,8 +75,7 @@ target_link_options(${EXECUTABLE} PRIVATE
         -Wl,--print-memory-usage
         -flto
         -Wl,--no-warn-rwx-segment
-        #THis here tells the export the bootloaderSymbol to be used on the linker script
-        -Wl,--defsym,bootloaderSymbol=1)
+)
 
 # Improve clean target
 set_target_properties(${EXECUTABLE} PROPERTIES ADDITIONAL_CLEAN_FILES
