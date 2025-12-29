@@ -129,6 +129,26 @@ The following table shows the flash memory layout by sector. Erase and write ope
 | 7      | 0x08060000   | 0x0807FFFF   | 128 KB | Unused           | Free / reserved                              |
 
 
+```mermaid
+stateDiagram-v2
+    [*] --> PING_STATE
+
+    PING_STATE --> START_STATE : CMD_PING / ACK
+    PING_STATE --> PING_STATE : Other / NACK
+
+    START_STATE --> DATA_STATE : CMD_START / ACK
+    START_STATE --> RESET_STATE : Other / NACK
+    START_STATE --> RESET_STATE : FW size too large / NACK
+    START_STATE --> RESET_STATE : Flash write header fail / NACK
+
+    DATA_STATE --> DATA_STATE : CMD_DATA / ACK
+    DATA_STATE --> END_STATE : CMD_END / CRC OK / ACK
+    DATA_STATE --> RESET_STATE : CMD_END / CRC Fail / NACK
+    DATA_STATE --> RESET_STATE : Other / NACK
+
+    RESET_STATE --> PING_STATE : Recovery
+```
+
 
 ## Notes
 
