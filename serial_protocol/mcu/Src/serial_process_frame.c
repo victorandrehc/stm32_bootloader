@@ -22,7 +22,7 @@ Prototol Package
 
 - LEN: payload length (little-endian)
 
-- CRC: CRC16-CCITT over VER..PAYLOAD
+- CRC: CRC16-CCITT over SOF..PAYLOAD
 */
 
 #define SOF             0xA5
