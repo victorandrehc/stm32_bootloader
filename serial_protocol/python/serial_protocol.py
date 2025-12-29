@@ -5,6 +5,7 @@ import crcmod
 import serial_process_frame
 
 from enum import Enum
+import argparse
 
 class State(Enum):
     PING = 0
@@ -79,9 +80,14 @@ class FirmwareUpdater:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Python UART Based Firmware Flasher')
+    parser.add_argument('firmare_path', type=str, help='The Path to the firmware file')
+    args = parser.parse_args()
+    firmware_path = args.firmare_path
+
     ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=5)
     frame_processor = serial_process_frame.FrameProcessor(ser)
-    with open("firmware.bin", "rb") as f:
+    with open(firmware_path, "rb") as f:
         firmware = f.read()
         updater = FirmwareUpdater(frame_processor, firmware, 1024)
         updater.run()
