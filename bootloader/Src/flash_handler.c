@@ -17,11 +17,12 @@ typedef struct
 } flash_handler_t;
 
 #define BYTES_TO_WORDS(SIZE)  (SIZE / sizeof(uint32_t))
-#define SECTOR_SIZE_BYTES_MAX FLASH_SECTOR_3_SIZE
+#define SECTOR_SIZE_BYTES_MAX FLASH_SECTOR_4_SIZE
 
 flash_handler_t flash_handler_array[] = {
     {FLASH_SECTOR_2, FLASH_SECTOR_2_START_ADDR, FLASH_SECTOR_2_SIZE, false},
     {FLASH_SECTOR_3, FLASH_SECTOR_3_START_ADDR, FLASH_SECTOR_3_SIZE, false},
+    {FLASH_SECTOR_4, FLASH_SECTOR_4_START_ADDR, FLASH_SECTOR_4_SIZE, false},
 };
 #define FLASH_HANDLER_ARRAY_SIZE (sizeof(flash_handler_array) / sizeof(flash_handler_t))
 static size_t current_sector_pivot = 0;
