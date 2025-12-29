@@ -82,10 +82,13 @@ class FirmwareUpdater:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Python UART Based Firmware Flasher')
     parser.add_argument('firmare_path', type=str, help='The Path to the firmware file')
+    parser.add_argument('--tty_port', required=False, type=str, default='/dev/ttyUSB0', help="TTY Port used in the UUART communication[/dev/ttyUSB0]")
+    parser.add_argument("--baudrate", required=False, type=int, default=115200, help="Help Baudrate used in UART [115200]")
     args = parser.parse_args()
     firmware_path = args.firmare_path
+    tty_port = args.tty_port
 
-    ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=5)
+    ser = serial.Serial(tty_port, 115200, timeout=5)
     frame_processor = serial_process_frame.FrameProcessor(ser)
     with open(firmware_path, "rb") as f:
         firmware = f.read()
