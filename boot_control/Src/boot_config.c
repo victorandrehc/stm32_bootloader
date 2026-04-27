@@ -4,6 +4,7 @@
 #include "stm32f4xx_hal.h"
 
 #include <stdio.h>
+#include <string.h>
 
 static volatile BOOT_CONFIG bootloader_api_t bootloader_api;
 volatile bootloader_api_t* bootloader_api_ptr = &bootloader_api;
@@ -35,12 +36,16 @@ static void deinit_peripherals(void)
     SCB->SHCSR = 0;
 }
 
-static void jump_to_address(uintptr_t app_addr)
+static void jump_to_address(uintptr_t flash_addr, uintptr_t ram_addr, size_t size)
 {
-    size_t app_stack = *(volatile size_t*) app_addr;
-    size_t app_reset_handler = *(volatile size_t*) (app_addr + 4);
+    memcpy((void*)ram_addr, (const void*)flash_addr, size);
+    __DSB();
+    __ISB();
+
+    uint32_t app_stack = *(volatile uint32_t*)ram_addr;
+    uint32_t app_reset_handler = *(volatile uint32_t*)(ram_addr + 4);
     printf("app_stack: 0x%x\tapp_reset_handler: 0x%x\n", app_stack, app_reset_handler);
-    printf("Vector table @0x%08X: MSP=0x%08X, Reset=0x%08X\n", app_addr, app_stack, app_reset_handler);
+    printf("Vector table @0x%08X: MSP=0x%08X, Reset=0x%08X\n", (unsigned)ram_addr, app_stack, app_reset_handler);
 
     if ((app_stack & 0x2FFE0000) != 0x20000000)
     {
@@ -51,7 +56,7 @@ static void jump_to_address(uintptr_t app_addr)
     __disable_irq();
     deinit_peripherals();
     HAL_DeInit();
-    SCB->VTOR = app_addr;
+    SCB->VTOR = ram_addr;
     __set_MSP(app_stack);
     __enable_irq();
     ((void (*)(void)) app_reset_handler)();
@@ -59,7 +64,8 @@ static void jump_to_address(uintptr_t app_addr)
 
 static void jump_to_application_implementation()
 {
-    jump_to_address(APP_START_ADDR);
+    const fw_header_t* header = (const fw_header_t*)FLASH_SECTOR_2_START_ADDR;
+    jump_to_address(APP_START_ADDR, APP_RAM_ADDR, header->fw_size);
 }
 
 static void jump_to_bootloader_implementaton(const reset_reason_e reset_reason)

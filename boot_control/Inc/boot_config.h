@@ -73,6 +73,7 @@
  * @brief Start address of the application firmware.
  */
 #define APP_START_ADDR (FLASH_SECTOR_2_START_ADDR + FW_HEADER_SIZE)
+#define APP_RAM_ADDR   0x20000000U
 
 /**
  * @def APP_SECTOR_SIZE
