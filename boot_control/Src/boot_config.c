@@ -91,6 +91,8 @@ const char* get_reset_reason_string()
             return "APPLICATION RESET";
         case FIRMWARE_UPDATE:
             return "FIRMWARE UPDATE";
+        case HARD_FAULT:
+            return "HARD FAULT";
         default:
             break;
     }

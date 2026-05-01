@@ -49,7 +49,8 @@ int main(void)
         blink(500);
     }
     printf("RESET CALLED\n");
-    bootloader_api_ptr->reset(FIRMWARE_UPDATE);
+    __asm volatile ("udf #0");  // undefined instruction → HardFault
+    // bootloader_api_ptr->reset(FIRMWARE_UPDATE);
 }
 
 /**

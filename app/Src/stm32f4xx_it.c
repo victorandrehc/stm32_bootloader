@@ -18,6 +18,10 @@
 #include "stm32f4xx_it.h"
 
 #include "main.h"
+#include <stdio.h>
+#include <boot_config.h>
+
+// volatile bootloader_api_t* bootloader_api_ptr = (bootloader_api_t*) BOOT_CONFIG_START_ADDR;
 
 /******************************************************************************/
 /*           Cortex-M4 Processor Interruption and Exception Handlers          */
@@ -36,6 +40,8 @@ void NMI_Handler(void)
  */
 void HardFault_Handler(void)
 {
+    printf("CRASH\n");
+    bootloader_api_ptr->reset(HARD_FAULT);
     while (1)
     {}
 }

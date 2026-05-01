@@ -118,6 +118,7 @@ typedef enum reset_reason_e
     POWER_CYCLE,       /**< Device powered up from cold start */
     APPLICATION_RESET, /**< Reset requested by application */
     FIRMWARE_UPDATE,   /**< Reset triggered after firmware update */
+    HARD_FAULT,        /**< Reset triggered after Hard Fault beig called */
 } reset_reason_e;
 
 /**
