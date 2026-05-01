@@ -9,6 +9,7 @@ set(SOURCE_FILES
         Src/startup_stm32f401xe.s
         Src/syscalls.c
         ../boot_control/Src/boot_config.c
+        ../boot_control/Src/stack_config.c
         Src/uart_handler.h
         Src/uart_handler.c
         Src/flash_handler.h
