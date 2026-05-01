@@ -30,6 +30,11 @@ void blink(uint32_t delay_ms)
 
 static volatile bool reset_called = false;
 
+extern uint32_t _sstack;
+extern uint32_t _estack;
+
+#define U32_TO_PTR(U32, PTR_TYPE) ((PTR_TYPE*)&(U32))
+
 int main(void)
 {
     HAL_Init();
@@ -37,6 +42,7 @@ int main(void)
     MX_GPIO_Init();
     MX_USART2_UART_Init();
     printf("STARTING APPLICATION\n");
+    printf("_estack: %p\t_sstack: %p\tsize:0x%x\n", U32_TO_PTR(_estack, void), U32_TO_PTR(_sstack, void), U32_TO_PTR(_estack, uint8_t) - U32_TO_PTR(_sstack, uint8_t));
     reset_called = false;  // set reset to false to avoid spurious IRQs
     while (!reset_called)
     {

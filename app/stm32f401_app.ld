@@ -52,11 +52,9 @@
 /* Entry Point */
 ENTRY(Reset_Handler)
 
-/* Highest address of the user mode stack */
-_estack = ORIGIN(RAM) + LENGTH(RAM);    /* end of RAM */
 /* Generate a link error if heap and stack don't fit into RAM */
 _Min_Heap_Size = 0x200;      /* required amount of heap  */
-_Min_Stack_Size = 0x400; /* required amount of stack */
+_Stack_Size = 0x800; /* required amount of stack */
 
 
 
@@ -171,6 +169,15 @@ SECTIONS
     __bss_end__ = _ebss;
   } >RAM
 
+
+  .stack (COPY):
+  {
+    . = ALIGN(8);
+    _sstack = .;
+    . = . + _Stack_Size;   /* 2KB stack for example */
+    _estack = .;
+  } >RAM
+
   /* User_heap_stack section, used to check that there is enough RAM left */
   ._user_heap_stack :
   {
@@ -178,7 +185,6 @@ SECTIONS
     PROVIDE ( end = . );
     PROVIDE ( _end = . );
     . = . + _Min_Heap_Size;
-    . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM
 
