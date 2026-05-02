@@ -32,7 +32,6 @@ void blink(uint32_t delay_ms)
 
 static volatile bool reset_called = false;
 
-
 void print_recursion(int n)
 {
     if (n == 0)

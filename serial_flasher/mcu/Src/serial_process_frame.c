@@ -168,7 +168,7 @@ static void send_ack_or_nack(serial_cmd_t cmd)
      * CRC covers SOF..PAYLOAD, matching the host→MCU rule. */
     uint8_t frame[HEADER_SIZE + CRC_SIZE] = {SOF, VERSION, cmd, 0, 0, 0, 0, 0, 0};
     uint16_t crc = crc16_ccitt(frame, HEADER_SIZE);
-    frame[HEADER_SIZE]     = crc & 0xFF;
+    frame[HEADER_SIZE] = crc & 0xFF;
     frame[HEADER_SIZE + 1] = crc >> 8;
     serial_api->send(frame, sizeof(frame));
 }

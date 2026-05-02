@@ -29,13 +29,13 @@
  */
 typedef struct PACKED firmware_header_t
 {
-    uint32_t magic;            ///< Magic number (FIRMWARE_HEADER_MAGIC)
-    uint32_t header_version;   ///< Header structure version
-    uint32_t firmware_version; ///< Application firmware version
-    uint32_t firmware_size;    ///< Size of firmware in bytes (excluding header)
-    uint32_t firmware_crc;     ///< CRC32 of firmware (excluding header)
-    uint32_t build_timestamp;  ///< Unix timestamp of build
-    uint32_t reserved[2];      ///< Reserved for future use
+    uint32_t magic;             ///< Magic number (FIRMWARE_HEADER_MAGIC)
+    uint32_t header_version;    ///< Header structure version
+    uint32_t firmware_version;  ///< Application firmware version
+    uint32_t firmware_size;     ///< Size of firmware in bytes (excluding header)
+    uint32_t firmware_crc;      ///< CRC32 of firmware (excluding header)
+    uint32_t build_timestamp;   ///< Unix timestamp of build
+    uint32_t reserved[2];       ///< Reserved for future use
 } firmware_header_t;
 
 /**

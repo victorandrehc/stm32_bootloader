@@ -127,7 +127,7 @@ void traverse_stack_skip_words(size_t offset_words)
 
 void hardfault_c(uint32_t* fault_sp)
 {
-    crash_dump_t* cd = &bootloader_api_ptr->boot_info.crash_dump;
+    volatile crash_dump_t* cd = &bootloader_api_ptr->boot_info.crash_dump;
     cd->sp_at_fault = (uint32_t) fault_sp;
     cd->cfsr = SCB->CFSR;
     cd->hfsr = SCB->HFSR;
@@ -159,7 +159,7 @@ void crash_dump_print(void)
     {
         return;
     }
-    const crash_dump_t* cd = &bootloader_api_ptr->boot_info.crash_dump;
+    volatile crash_dump_t* cd = &bootloader_api_ptr->boot_info.crash_dump;
 
     printf("=== CRASH DUMP ===\n");
     printf("sp_at_fault: 0x%08lx\n", (unsigned long) cd->sp_at_fault);
