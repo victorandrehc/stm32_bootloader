@@ -38,7 +38,7 @@ void print_rescursion(int n)
     {
         return;
     }
-    print_stack();
+    print_stack_info();
     printf("This was probe #%d\n", n);
     print_rescursion(--n);
 }
@@ -53,8 +53,8 @@ int main(void)
     printf("STARTING APPLICATION\n");
     reset_called = false;  // set reset to false to avoid spurious IRQs
                            // print_rescursion(128);
-    print_stack();
-    traverse_stack();
+    print_stack_info();
+    print_heap_info();
     while (!reset_called)
     {
         blink(500);

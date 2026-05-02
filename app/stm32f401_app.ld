@@ -182,6 +182,7 @@ SECTIONS
     . = ALIGN(8);
     PROVIDE ( end  = . );
     PROVIDE ( _end = . );
+    _sheap = .;
     . = . + _Min_Heap_Size;
     . = ALIGN(8);
     _eheap = .;

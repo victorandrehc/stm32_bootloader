@@ -10,7 +10,7 @@ extern uint32_t _sstack;
 extern uint32_t _estack;
 
 extern uint32_t _sheap;
-extern uint32_t _end;
+extern uint32_t _eheap;
 
 #define STACK_PAINT_WORD          0xDEADBEEFu
 #define PAINT_SAFETY_MARGIN_BYTES 64u   /* headroom so we don't clobber our own frame */
@@ -33,10 +33,17 @@ size_t get_stack_size(void)
 }
 
 
-size_t get_heap_size(void)
+size_t get_max_heap_available(void)
 {
-    return (size_t)((const uint8_t *)&_sstack - (const uint8_t *)&_end);
+    return (size_t)((const uint8_t *)&_sstack - (const uint8_t *)&_sheap);
 }
+
+size_t get_max_heap_reserved(void)
+{
+    return (size_t)((const uint8_t *)&_eheap - (const uint8_t *)&_sheap);
+}
+
+
 
 
 size_t get_stack_high_water(void)
@@ -50,17 +57,26 @@ size_t get_stack_high_water(void)
     return (size_t)((const uint8_t *)e - (const uint8_t *)p);
 }
 
-void print_stack(void)
+void print_stack_info(void)
 {
-    size_t total = get_stack_size();
-    size_t hw    = get_stack_high_water();
-    unsigned pct = total ? (unsigned)((hw * 100u) / total) : 0u;
-    size_t heap_size = get_heap_size();
+    size_t stack_size = get_stack_size();
+    size_t stack_usage    = get_stack_high_water();
+    unsigned stack_usage_pct = stack_size ? (unsigned)((stack_usage * 100u) / stack_size) : 0u;
 
     printf("stack: base=%p top=%p size=%u high_water=%u (%u%%)\n",
            (void *)&_sstack, (void *)&_estack,
-           (unsigned)total, (unsigned)hw, pct);
-    printf("heap size: %u[%x]\n", heap_size,heap_size);
+           (unsigned)stack_size, (unsigned)stack_usage, stack_usage_pct);
+}
+
+
+void print_heap_info(void)
+{
+    size_t max_available = get_max_heap_available();
+    size_t reserved = get_max_heap_reserved();
+   
+    printf("heap: base=%p top=%p max available=%u reserved=%u\n",
+           (void *)&_sheap, (void *)&_eheap,
+           (unsigned)max_available, (unsigned)reserved);
 }
 
 void traverse_stack(void)
