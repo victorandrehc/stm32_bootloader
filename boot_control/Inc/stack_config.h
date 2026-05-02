@@ -95,6 +95,21 @@ size_t get_stack_high_water(void);
  */
 void traverse_stack(void);
 
+/**
+ * @brief Dump the stack region word-by-word starting `offset_words`
+ *        words above `_sstack`.
+ *
+ * Snapshots the requested portion into the same static buffer used by
+ * `traverse_stack` and prints from the snapshot, so the dump itself
+ * does not contaminate the region being read. The printed range is
+ * capped at STACK_USAGE_BYTES; if the request is larger, a `WARN`
+ * line is emitted and only the first STACK_USAGE_BYTES are dumped.
+ *
+ * @param offset_words  Number of 32-bit words to skip from the bottom
+ *                      of the stack. Must be strictly less than the
+ *                      stack size in words; out-of-range values log a
+ *                      message and return without dumping.
+ */
 void traverse_stack_skip_words(size_t offset_words);
 
 /**

@@ -96,7 +96,8 @@ void traverse_stack_skip_words(size_t offset_words)
     const size_t stack_size_words = get_stack_size() / sizeof(uint32_t);
     if (offset_words >= stack_size_words)
     {
-        printf("offset_words [%u] cant go over the stack size in words %u", offset_words, stack_size_words);
+        printf("offset_words [%u] can't exceed stack size in words [%u]\n",
+               (unsigned)offset_words, (unsigned)stack_size_words);
         return;
     }
 
@@ -105,15 +106,16 @@ void traverse_stack_skip_words(size_t offset_words)
     const size_t copy_bytes = remaining_size_bytes > STACK_USAGE_BYTES ? STACK_USAGE_BYTES : remaining_size_bytes;
     if (remaining_size_bytes > STACK_USAGE_BYTES)
     {
-        printf("WARN: Traversing only the first %u bytes of the stack from the offset", (unsigned) copy_bytes);
+        printf("WARN: Traversing only the first %u bytes of the stack from the offset\n",
+               (unsigned)copy_bytes);
     }
 
-    printf("start: %p offset_words: %u[0x%x], reaminaing_size: %u[0x%x]\n",
-           (const void*) start,
-           offset_words,
-           offset_words,
-           copy_bytes,
-           copy_bytes);
+    printf("start: %p offset_words: %u[0x%x], remaining_size: %u[0x%x]\n",
+           (const void*)start,
+           (unsigned)offset_words,
+           (unsigned)offset_words,
+           (unsigned)copy_bytes,
+           (unsigned)copy_bytes);
     memcpy(stack_copy, start, copy_bytes);
 
     const size_t n_words = copy_bytes / sizeof(uint32_t);
