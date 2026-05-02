@@ -18,8 +18,9 @@
 #include "stm32f4xx_it.h"
 
 #include "main.h"
-#include <stdio.h>
+
 #include <boot_config.h>
+#include <stdio.h>
 
 // volatile bootloader_api_t* bootloader_api_ptr = (bootloader_api_t*) BOOT_CONFIG_START_ADDR;
 
@@ -32,7 +33,7 @@
 void NMI_Handler(void)
 {
     while (1)
-    {}
+    { }
 }
 
 /**
@@ -43,7 +44,7 @@ void HardFault_Handler(void)
     printf("CRASH\n");
     bootloader_api_ptr->reset(HARD_FAULT);
     while (1)
-    {}
+    { }
 }
 
 /**
@@ -52,7 +53,7 @@ void HardFault_Handler(void)
 void MemManage_Handler(void)
 {
     while (1)
-    {}
+    { }
 }
 
 /**
@@ -61,7 +62,7 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
     while (1)
-    {}
+    { }
 }
 
 /**
@@ -70,23 +71,23 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
     while (1)
-    {}
+    { }
 }
 
 /**
  * @brief This function handles System service call via SWI instruction.
  */
-void SVC_Handler(void) {}
+void SVC_Handler(void) { }
 
 /**
  * @brief This function handles Debug monitor.
  */
-void DebugMon_Handler(void) {}
+void DebugMon_Handler(void) { }
 
 /**
  * @brief This function handles Pendable request for system service.
  */
-void PendSV_Handler(void) {}
+void PendSV_Handler(void) { }
 
 /**
  * @brief This function handles System tick timer.

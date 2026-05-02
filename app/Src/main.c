@@ -1,14 +1,14 @@
 #include "main.h"
 
 #include <boot_config.h>
-#include <stack_config.h>
 #include <errno.h>
+#include <stack_config.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <string.h>
 
 UART_HandleTypeDef huart2;
 
@@ -34,15 +34,13 @@ static volatile bool reset_called = false;
 
 void print_rescursion(int n)
 {
-    if (n==0)
+    if (n == 0)
     {
         return;
     }
     print_stack();
     printf("This was probe #%d\n", n);
     print_rescursion(--n);
-
-
 }
 
 int main(void)
@@ -54,16 +52,15 @@ int main(void)
     MX_USART2_UART_Init();
     printf("STARTING APPLICATION\n");
     reset_called = false;  // set reset to false to avoid spurious IRQs
-    // print_rescursion(128);
-     print_stack();
-     traverse_stack();
+                           // print_rescursion(128);
+    print_stack();
+    traverse_stack();
     while (!reset_called)
     {
-       
         blink(500);
     }
     printf("RESET CALLED\n");
-    __asm volatile ("udf #0");  // undefined instruction → HardFault
+    __asm volatile("udf #0");  // undefined instruction → HardFault
     // bootloader_api_ptr->reset(FIRMWARE_UPDATE);
 }
 
@@ -176,7 +173,7 @@ void Error_Handler(void)
 {
     __disable_irq();
     while (1)
-    {}
+    { }
 }
 
 #ifdef USE_FULL_ASSERT
