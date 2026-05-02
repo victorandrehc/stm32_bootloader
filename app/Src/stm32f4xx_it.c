@@ -37,30 +37,17 @@ void NMI_Handler(void)
     { }
 }
 
-extern void hardfault_c(uint32_t* fault_sp);
-void hardfault_c_internal(uint32_t* fault_sp)
-{
-    hardfault_c(fault_sp);
-}
-
-
 /**
  * @brief This function handles Hard fault interrupt.
  */
 __attribute__((naked, used)) void HardFault_Handler(void)
 {
-    __asm volatile(
-     "tst lr,#4 \n"
-     "ite eq \n"
-     "mrseq r0, msp \n"
-     "mrsne r0, psp \n"
-     "bl hardfault_c_internal \n"
-    );
-    while (1)
-    { }
+    __asm volatile("tst lr,#4 \n"
+                   "ite eq \n"
+                   "mrseq r0, msp \n"
+                   "mrsne r0, psp \n"
+                   "b hardfault_c \n");
 }
-
-
 
 /**
  * @brief This function handles Memory management fault.

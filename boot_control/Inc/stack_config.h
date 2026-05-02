@@ -136,3 +136,5 @@ size_t get_max_heap_available(void);
 size_t get_max_heap_reserved(void);
 
 void hardfault_c(uint32_t* fault_sp);
+
+void crash_dump_print(void);

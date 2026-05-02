@@ -1,8 +1,8 @@
 #pragma once
 
 #include <assert.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 /**
  * @def PACKED
  * @brief Attribute to pack structures without padding.
@@ -130,6 +130,7 @@ typedef enum reset_reason_e
     APPLICATION_RESET, /**< Reset requested by application */
     FIRMWARE_UPDATE,   /**< Reset triggered after firmware update */
     HARD_FAULT,        /**< Reset triggered after Hard Fault beig called */
+    UNKNOWN,
 } reset_reason_e;
 
 /**
@@ -139,7 +140,7 @@ typedef enum reset_reason_e
 #define BOOT_INFO_MAGIC 0xDEADBEEFU
 
 #define CRASH_DUMP_STACK_WORDS 237
-#define CRASH_DUMP_STACK_BYTES (CRASH_DUMP_STACK_WORDS*sizeof(uint32_t))
+#define CRASH_DUMP_STACK_BYTES (CRASH_DUMP_STACK_WORDS * sizeof(uint32_t))
 typedef struct PACKED crash_dump_t
 {
     uint32_t sp_at_fault;
@@ -149,9 +150,8 @@ typedef struct PACKED crash_dump_t
     uint32_t bfar;
     uint32_t hw_frame[8];
     size_t stack_captured;
-    uint32_t stack_captured_init_addr;
     uint32_t stack[CRASH_DUMP_STACK_WORDS];
-}crash_dump_t;
+} crash_dump_t;
 
 /**
  * @brief Boot information structure shared between bootloader and application.
@@ -211,12 +211,13 @@ extern volatile bootloader_api_t* bootloader_api_ptr;
  */
 void init_boot_api(void);
 
+reset_reason_e get_reset_reason(void);
+
+void clear_reset_reason(void);
+
 /**
  * @brief Get a human-readable string describing the last reset reason.
  *
  * @return const char* Null-terminated string describing the reset reason.
  */
 const char* get_reset_reason_string(void);
-
-
-

@@ -2,6 +2,7 @@
 
 #include "boot_config.h"
 #include "flash_handler.h"
+#include "stack_config.h"
 #include "uart_handler.h"
 
 #include <errno.h>
@@ -64,6 +65,15 @@ int main(void)
     printf("Press Button to Enter DFU mode\n");
     const char* reboot_reason = get_reset_reason_string();
     printf("MAGIC NUMBER: 0x%08lx RESET_REASON: %s\n", bootloader_api_ptr->boot_info.magic, reboot_reason);
+
+    if (get_reset_reason() == HARD_FAULT)
+    {
+        crash_dump_print();
+        printf("REBOOT THE MCU TO PROCEED WITH OPERATION\n");
+        clear_reset_reason();
+        while (1)
+            ;
+    }
 
     bool dfu = try_enter_DFU_mode();
 

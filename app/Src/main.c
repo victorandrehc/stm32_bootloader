@@ -58,9 +58,9 @@ int main(void)
     print_stack_info();
 
     // traverse the used part of the stack
-    const size_t stack_size = get_stack_size();
-    const size_t stack_usage = get_stack_high_water();
-    traverse_stack_skip_words((stack_size - stack_usage) / sizeof(uint32_t) - 5);
+    // const size_t stack_size = get_stack_size();
+    // const size_t stack_usage = get_stack_high_water();
+    // traverse_stack_skip_words((stack_size - stack_usage) / sizeof(uint32_t) - 5);
     while (!reset_called)
     {
         blink(500);
