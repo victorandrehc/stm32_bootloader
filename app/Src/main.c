@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <string.h>
 
 UART_HandleTypeDef huart2;
 
@@ -31,6 +32,19 @@ void blink(uint32_t delay_ms)
 
 static volatile bool reset_called = false;
 
+void print_rescursion(int n)
+{
+    if (n==0)
+    {
+        return;
+    }
+    print_stack();
+    printf("This was probe #%d\n", n);
+    print_rescursion(--n);
+
+
+}
+
 int main(void)
 {
     HAL_Init();
@@ -38,10 +52,12 @@ int main(void)
     MX_GPIO_Init();
     MX_USART2_UART_Init();
     printf("STARTING APPLICATION\n");
-    print_stack();
     reset_called = false;  // set reset to false to avoid spurious IRQs
+    // print_rescursion(128);
+     print_stack();
     while (!reset_called)
     {
+       
         blink(500);
     }
     printf("RESET CALLED\n");
