@@ -2,7 +2,7 @@
 
 #include <assert.h>
 #include <stdint.h>
-
+#include <stddef.h>
 /**
  * @def PACKED
  * @brief Attribute to pack structures without padding.
@@ -61,6 +61,17 @@
  * @brief Size of the firmware header in bytes.
  */
 #define FW_HEADER_SIZE 0x200
+
+/**
+ * @def RAM_CFG_SIZE
+ * @brief Size of the configuration ram section header in bytes. THis is the no-init ram
+ */
+#define RAM_CFG_SIZE 0x400
+
+/**
+BOOT_CONFIG is the only symbol in RAM_CFG;
+*/
+#define BOOT_CFG_SIZE RAM_CFG_SIZE
 
 /**
  * @def BOOT_START_ADDR
@@ -127,6 +138,21 @@ typedef enum reset_reason_e
  */
 #define BOOT_INFO_MAGIC 0xDEADBEEFU
 
+#define CRASH_DUMP_STACK_WORDS 237
+#define CRASH_DUMP_STACK_BYTES (CRASH_DUMP_STACK_WORDS*sizeof(uint32_t))
+typedef struct PACKED crash_dump_t
+{
+    uint32_t sp_at_fault;
+    uint32_t cfsr;
+    uint32_t hfsr;
+    uint32_t mmfar;
+    uint32_t bfar;
+    uint32_t hw_frame[8];
+    size_t stack_captured;
+    uint32_t stack_captured_init_addr;
+    uint32_t stack[CRASH_DUMP_STACK_WORDS];
+}crash_dump_t;
+
 /**
  * @brief Boot information structure shared between bootloader and application.
  */
@@ -134,8 +160,9 @@ typedef struct PACKED boot_info_t
 {
     uint32_t magic;             /**< Validation magic value */
     uint32_t reset_reason_uint; /**< Reset reason as integer */
-    uint32_t reserved[5];       /**< Reserved for future use */
+    crash_dump_t crash_dump;
 } boot_info_t;
+_Static_assert(sizeof(boot_info_t) <= BOOT_CFG_SIZE, "BOOT_CONFIG_MISMATCH");
 
 /* -------------------------------------------------------------------------- */
 /* Bootloader API                                                              */
@@ -190,3 +217,6 @@ void init_boot_api(void);
  * @return const char* Null-terminated string describing the reset reason.
  */
 const char* get_reset_reason_string(void);
+
+
+void hardfault_c(uint32_t* fault_sp);

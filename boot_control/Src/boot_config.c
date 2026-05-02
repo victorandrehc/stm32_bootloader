@@ -1,5 +1,6 @@
 
 #include "boot_config.h"
+#include <stack_config.h>
 
 #include "stm32f4xx_hal.h"
 
@@ -97,4 +98,9 @@ const char* get_reset_reason_string()
             break;
     }
     return "UNKNOWN_REASON";
+}
+
+void hardfault_c(uint32_t* fault_sp){
+    printf("aqui\n");
+    bootloader_api_ptr->reset(HARD_FAULT);
 }

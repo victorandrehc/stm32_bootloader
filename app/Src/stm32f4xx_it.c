@@ -19,7 +19,7 @@
 
 #include "main.h"
 
-#include <boot_config.h>
+#include "boot_config.h"
 #include <stdio.h>
 
 // volatile bootloader_api_t* bootloader_api_ptr = (bootloader_api_t*) BOOT_CONFIG_START_ADDR;
@@ -36,16 +36,30 @@ void NMI_Handler(void)
     { }
 }
 
+extern void hardfault_c(uint32_t* fault_sp);
+void hardfault_c_internal(uint32_t* fault_sp)
+{
+    hardfault_c(fault_sp);
+}
+
+
 /**
  * @brief This function handles Hard fault interrupt.
  */
-void HardFault_Handler(void)
+__attribute__((naked, used)) void HardFault_Handler(void)
 {
-    printf("CRASH\n");
-    bootloader_api_ptr->reset(HARD_FAULT);
+    __asm volatile(
+     "tst lr,#4 \n"
+     "ite eq \n"
+     "mrseq r0, msp \n"
+     "mrsne r0, psp \n"
+     "bl hardfault_c_internal \n"
+    );
     while (1)
     { }
 }
+
+
 
 /**
  * @brief This function handles Memory management fault.
