@@ -55,6 +55,7 @@ int main(void)
                            // print_rescursion(128);
     print_stack_info();
     print_heap_info();
+    traverse_stack();
     while (!reset_called)
     {
         blink(500);
