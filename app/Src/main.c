@@ -58,7 +58,7 @@ int main(void)
 
     traverse_stack();
     printf("last bytes\n");
-    traverse_stack_last_bytes(100);
+    traverse_stack_skip_words(100);
     while (!reset_called)
     {
         blink(500);
