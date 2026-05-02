@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 extern uint32_t _sstack;
@@ -92,6 +91,10 @@ void traverse_stack(void)
     const size_t size_bytes = (size_t) ((const uint8_t*) &_estack - (const uint8_t*) &_sstack);
     const size_t copy_bytes = size_bytes > STACK_USAGE_BYTES ? STACK_USAGE_BYTES : size_bytes;
     const size_t n_words = copy_bytes / sizeof(uint32_t);
+    if (size_bytes > STACK_USAGE_BYTES)
+    {
+        printf("WARN: Traversing only the first %u bytes of the stack", copy_bytes);
+    }
 
     memcpy(stack_copy, &_sstack, copy_bytes);
 
