@@ -9,10 +9,16 @@
 #define PACKED
 #endif
 
-// Firmware header magic number to identify valid firmware
-#define FIRMWARE_HEADER_MAGIC 0x464D5748  // "FWMH" - Firmware Header Magic
+/**
+ * @def FIRMWARE_HEADER_MAGIC
+ * @brief Magic number identifying a valid firmware header ("FWMH").
+ */
+#define FIRMWARE_HEADER_MAGIC 0x464D5748
 
-// Firmware header version
+/**
+ * @def FIRMWARE_HEADER_VERSION
+ * @brief Current version of the firmware header layout.
+ */
 #define FIRMWARE_HEADER_VERSION 1
 
 /**
@@ -23,16 +29,19 @@
  */
 typedef struct PACKED firmware_header_t
 {
-    uint32_t magic;             // Magic number (FIRMWARE_HEADER_MAGIC)
-    uint32_t header_version;    // Header structure version
-    uint32_t firmware_version;  // Application firmware version
-    uint32_t firmware_size;     // Size of firmware in bytes (excluding header)
-    uint32_t firmware_crc;      // CRC32 of firmware (excluding header)
-    uint32_t build_timestamp;   // Unix timestamp of build
-    uint32_t reserved[2];       // Reserved for future use
+    uint32_t magic;            ///< Magic number (FIRMWARE_HEADER_MAGIC)
+    uint32_t header_version;   ///< Header structure version
+    uint32_t firmware_version; ///< Application firmware version
+    uint32_t firmware_size;    ///< Size of firmware in bytes (excluding header)
+    uint32_t firmware_crc;     ///< CRC32 of firmware (excluding header)
+    uint32_t build_timestamp;  ///< Unix timestamp of build
+    uint32_t reserved[2];      ///< Reserved for future use
 } firmware_header_t;
 
-// Size of the firmware header
+/**
+ * @def FIRMWARE_HEADER_SIZE
+ * @brief Size in bytes of the firmware header.
+ */
 #define FIRMWARE_HEADER_SIZE sizeof(firmware_header_t)
 
 /**

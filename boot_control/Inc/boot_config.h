@@ -139,18 +139,37 @@ typedef enum reset_reason_e
  */
 #define BOOT_INFO_MAGIC 0xDEADBEEFU
 
+/**
+ * @def CRASH_DUMP_STACK_WORDS
+ * @brief Number of 32-bit stack words captured into the crash dump.
+ *
+ * Sized so the full crash_dump_t fits inside the BOOT_CONFIG noinit RAM region.
+ */
 #define CRASH_DUMP_STACK_WORDS 237
+
+/**
+ * @def CRASH_DUMP_STACK_BYTES
+ * @brief Size in bytes of the captured stack snapshot in a crash dump.
+ */
 #define CRASH_DUMP_STACK_BYTES (CRASH_DUMP_STACK_WORDS * sizeof(uint32_t))
+
+/**
+ * @brief Persisted snapshot of CPU state captured on a HardFault.
+ *
+ * Populated by the fault handler before reset and read by the bootloader on
+ * the next boot to report the failure. Lives in the BOOT_CONFIG noinit RAM
+ * section so it survives a warm reset.
+ */
 typedef struct PACKED crash_dump_t
 {
-    uint32_t sp_at_fault;
-    uint32_t cfsr;
-    uint32_t hfsr;
-    uint32_t mmfar;
-    uint32_t bfar;
-    uint32_t hw_frame[8];
-    size_t stack_captured;
-    uint32_t stack[CRASH_DUMP_STACK_WORDS];
+    uint32_t sp_at_fault;                   /**< Stack pointer (MSP/PSP) at the moment of fault entry */
+    uint32_t cfsr;                          /**< Configurable Fault Status Register */
+    uint32_t hfsr;                          /**< HardFault Status Register */
+    uint32_t mmfar;                         /**< MemManage Fault Address Register */
+    uint32_t bfar;                          /**< BusFault Address Register */
+    uint32_t hw_frame[8];                   /**< Hardware-stacked exception frame: R0-R3, R12, LR, PC, xPSR */
+    size_t stack_captured;                  /**< Number of valid words in @ref stack (<= CRASH_DUMP_STACK_WORDS) */
+    uint32_t stack[CRASH_DUMP_STACK_WORDS]; /**< Stack words copied starting at @ref sp_at_fault */
 } crash_dump_t;
 
 /**
@@ -160,7 +179,7 @@ typedef struct PACKED boot_info_t
 {
     uint32_t magic;             /**< Validation magic value */
     uint32_t reset_reason_uint; /**< Reset reason as integer */
-    crash_dump_t crash_dump;
+    crash_dump_t crash_dump;    /**< Last-fault snapshot, valid when reset_reason == HARD_FAULT */
 } boot_info_t;
 _Static_assert(sizeof(boot_info_t) <= BOOT_CFG_SIZE, "BOOT_CONFIG_MISMATCH");
 
@@ -211,8 +230,23 @@ extern volatile bootloader_api_t* bootloader_api_ptr;
  */
 void init_boot_api(void);
 
+/**
+ * @brief Get the reset reason recorded in the boot info structure.
+ *
+ * Returns the reason that triggered the most recent reset. Valid only after
+ * the bootloader has populated the boot info on startup.
+ *
+ * @return reset_reason_e Last recorded reset reason.
+ */
 reset_reason_e get_reset_reason(void);
 
+/**
+ * @brief Clear the recorded reset reason in the boot info structure.
+ *
+ * Resets the stored reason back to its default. Typically called by the
+ * application once it has consumed the value returned by
+ * @ref get_reset_reason.
+ */
 void clear_reset_reason(void);
 
 /**

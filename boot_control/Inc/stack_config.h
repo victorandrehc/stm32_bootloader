@@ -135,6 +135,30 @@ size_t get_max_heap_available(void);
  */
 size_t get_max_heap_reserved(void);
 
+/**
+ * @brief C-side HardFault handler entry point.
+ *
+ * Invoked from the assembly `HardFault_Handler` after it has selected the
+ * faulting stack pointer (MSP or PSP) and passed it as @p fault_sp. The
+ * function captures CPU fault status registers, the hardware-stacked
+ * exception frame, and a portion of the faulting stack into the persistent
+ * @ref crash_dump_t in BOOT_CONFIG noinit RAM, then triggers a system reset
+ * with reason @ref HARD_FAULT.
+ *
+ * @param fault_sp Stack pointer in use at the moment of fault entry. Must
+ *                 point at the hardware-stacked frame (R0-R3, R12, LR, PC,
+ *                 xPSR).
+ *
+ * @note Does not return.
+ */
 void hardfault_c(uint32_t* fault_sp);
 
+/**
+ * @brief Print the persisted crash dump over UART.
+ *
+ * Reads the @ref crash_dump_t stored in BOOT_CONFIG noinit RAM and emits a
+ * human-readable summary: fault status registers, the stacked exception
+ * frame, and the captured stack words. Intended to be called by the
+ * bootloader on the boot following a HardFault-triggered reset.
+ */
 void crash_dump_print(void);

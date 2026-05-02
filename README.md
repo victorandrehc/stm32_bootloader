@@ -129,6 +129,18 @@ The following table shows the flash memory layout by sector. Erase and write ope
 | 7      | 0x08060000   | 0x0807FFFF   | 128 KB | Unused           | Free / reserved                            
   |
 
+The STM32F4 flash sectors are non-uniform: sectors 0–3 are 16 KB each, sector 4 is 64 KB, and sectors 5–7 are 128 KB. Erase is performed per sector, so erase cost grows with sector size.
+
+### Firmware Header at 0x08008000
+
+The "FW Header" row above refers to the runtime header consumed by the boot path: a 512 B `fw_header_t` (`boot_control/Inc/boot_config.h`) holding `magic` (`BOOT_INFO_MAGIC` / `0xDEADBEEF`), `fw_size`, and a CRC16. The bootloader writes it during the serial-flashing handshake (`fw_write_header` in `bootloader/Src/flash_handler.c`) and validates it on every boot via `fw_check_header`.
+
+A second header type, `firmware_header_t` (`boot_control/Inc/firmware_header.h`, 32 B with version, CRC32, and build timestamp), exists in the source tree and is instantiated by `app/Src/firmware_header_app.c` for embedding into the app image. Its validator (`firmware_verify_integrity`) is **not** wired into the bootloader's boot path today; the runtime check is `fw_check_header` over the 512 B header only. Treat `firmware_header_t` as in-progress richer metadata, not as the active validation path.
+
+### Related: persistent state in RAM
+
+Some bootloader/app interaction does not live in flash. The `bootloader_api_t` handoff (function pointers, reset reason, crash dump) sits in the `BOOT_CONFIG` noinit region at `0x20017C00`; see the [RAM Memory Layout](#ram-memory-layout) section.
+
 ## ARM Vector Table and Bootloader Jump
 Below is a simplified representation of a Cortex-M vector table as stored in flash memory:
 
@@ -168,41 +180,54 @@ Subsequent entries contain the addresses of fault handlers, system exceptions, a
 
 By default, the vector table is expected at address 0x08000000, but Cortex-M devices allow relocating it using the VTOR (Vector Table Offset Register).
 
+### Boot Decision Tree
+
+Before any jump happens, the bootloader (`bootloader/Src/main.c`) runs a small decision tree on every reset:
+
+1. `HAL_Init()` → `init_boot_api()` → print banner.
+2. Read the persisted reset reason from `bootloader_api_ptr->boot_info`:
+   - **`HARD_FAULT`** → call `crash_dump_print()` to dump the captured fault state over UART, then halt in an infinite loop. The user must power-cycle to continue. (See the [Stack Diagnostics and Crash Dump](#stack-diagnostics-and-crash-dump) section.)
+   - **`FIRMWARE_UPDATE`** → enter DFU directly (no countdown).
+   - **Anything else** → 3 × 1 s countdown (`try_enter_DFU_mode()`), polling the **B1 button on PC13** (configured falling-edge in `MX_GPIO_Init`); if pressed at any point, enter DFU.
+3. If DFU was entered: switch the persisted reason to `APPLICATION_RESET` (so a debugger-driven soft reset doesn't loop back into DFU), run `recv_firmware()` over UART1 with `serial_api_t` wired to the flash handler, then `bootloader_api_ptr->reset(APPLICATION_RESET)`.
+4. If DFU was not entered: `fw_check_header()` validates the 512 B `fw_header_t` (magic + CRC16). On mismatch the bootloader resets with reason `FIRMWARE_UPDATE`, which sends the next boot straight back into DFU.
+5. On success: call `bootloader_api_ptr->jump_to_application()`.
+
+Note: the bootloader does **not** call `init_stack()` / `print_stack_info()` — those are app-side only (`app/Src/main.c`). The stack-painting sentinel never gets written into the bootloader's stack region.
+
 ### Bootloader to Application Jump
 
-In this project, the bootloader resides at the beginning of flash and the application is located at a higher address (0x08008200). To transfer execution to the application, the bootloader performs the following steps:
+In this project, the bootloader resides at the beginning of flash and the application is located at a higher address (0x08008200). The actual jump is implemented in `boot_control/Src/boot_config.c` (`jump_to_address` + `deinit_peripherals`). The full sequence:
 
-1. Validate the Application
-    
-    The bootloader checks the firmware header (CRC, size, etc.) to ensure the application image is valid and coherent.
-
-2.  De-initialize Peripherals
-    
-    All peripherals used by the bootloader are reset or disabled to avoid side effects in the application.
-
-3. Relocate the Vector Table
-
-    The SCB->VTOR register is updated to point to the application's vector table:
-
+1. Read the application's initial MSP and reset-handler addresses from the first two words of its vector table at `APP_START_ADDR`.
+2. **Sanity-check the MSP**: the value must match the `0x2000xxxx` RAM prefix. A bad value is treated as "no application loaded" and the function returns instead of jumping.
+3. `__disable_irq()` to mask interrupts during teardown.
+4. **Deinit peripherals** (`deinit_peripherals()`):
+   - Stop SysTick: `CTRL = 0`, `LOAD = 0`, `VAL = 0`, then `NVIC_ClearPendingIRQ(SysTick_IRQn)`.
+   - For all 8 NVIC banks: `ICER[i] = 0xFFFFFFFF` (disable IRQs) and `ICPR[i] = 0xFFFFFFFF` (clear pending).
+   - `__DSB(); __ISB();` to ensure the disables take effect before continuing.
+   - `HAL_RCC_DeInit()` to restore default clock config.
+   - Clear pending SysTick (`SCB->ICSR |= SCB_ICSR_PENDSTCLR_Msk`) and all System Handler fault enables (`SCB->SHCSR = 0`).
+5. `HAL_DeInit()` to release any remaining HAL state.
+6. Relocate the vector table: `SCB->VTOR = APP_START_ADDR;`.
+7. Load the application's MSP: `__set_MSP(app_stack);`.
+8. `__enable_irq()` immediately before the jump so the application starts with interrupts enabled.
+9. Jump to the application's reset handler as a function pointer:
     ```c
-    SCB->VTOR = APP_START_ADDRESS;
-    ```
-
-4. Set the Main Stack Pointer (MSP)
-
-    The MSP is loaded with the first word of the application's vector table:
-    ```c
-    __set_MSP(*(uint32_t *)APP_START_ADDRESS);
-    ```
-5. Jump to the Application Reset Handler
-
-    The bootloader reads the second word of the vector table and jumps to it as a function pointer:
-    ```c
-    size_t app_reset_handler = *(volatile size_t*) (APP_START_ADDRESS + 4);
-    ((void (*)(void)) app_reset_handler)(); //should never return
+    ((void (*)(void)) app_reset_handler)();   // does not return
     ```
 
 After this sequence, execution continues entirely within the application as if it had been started directly after reset.
+
+### Bootloader API Handoff
+
+The bootloader exposes a small API to the application via `bootloader_api_ptr`, a pointer to a `bootloader_api_t` placed in the `BOOT_CONFIG` noinit RAM region (fixed at `0x20017C00`). This is what gives the app a controlled way to reboot back into the bootloader. The struct (see `boot_control/Inc/boot_config.h`) holds:
+
+- `jump_to_application` — function pointer the bootloader uses to launch the app; not normally invoked by the app.
+- `reset(reset_reason_e)` — the app calls this to trigger a system reset while annotating *why*. The implementation stamps `BOOT_INFO_MAGIC` and the reason into the noinit struct, then calls `NVIC_SystemReset()`. The next bootloader run reads the reason and routes accordingly (e.g. `FIRMWARE_UPDATE` lands directly in DFU, `HARD_FAULT` triggers the crash dump path).
+- `boot_info` — `magic`, `reset_reason_uint`, and the persisted `crash_dump_t`.
+
+Because this struct lives in noinit RAM, the bootloader and app share state across warm resets without touching flash.
 
 
 ## Serial Flasher
@@ -274,10 +299,147 @@ PAYLOAD: command-specific data
 CRC: CRC16-CCITT (ccitt-false) calculated over: SOF | VER | CMD | LEN | PAYLOAD
 ```
 
+### Command IDs
 
-python scripts/decode_crash.py --elf build/app/cmake_stm32_app.out --addr2line /opt/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-addr2line --objdump /opt/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-objdump --dump crash_dump_example
+| Name        | Value  | Direction      | Payload                                         |
+|-------------|--------|----------------|-------------------------------------------------|
+| `CMD_PING`  | `0x01` | Host → MCU     | none                                            |
+| `CMD_START` | `0x02` | Host → MCU     | `uint32_t fw_size` (LE) + `uint16_t fw_crc` (LE) — 6 bytes |
+| `CMD_DATA`  | `0x03` | Host → MCU     | firmware chunk bytes                            |
+| `CMD_END`   | `0x04` | Host → MCU     | none                                            |
+| `CMD_RESET` | `0x05` | Host → MCU     | none                                            |
+| `CMD_ACK`   | `0x7F` | MCU → Host     | none (`LEN = 0`)                                |
+| `CMD_NACK`  | `0x7E` | MCU → Host     | none (`LEN = 0`)                                |
 
-python serial_flasher/python/serial_flasher.py      build/app/cmake_stm32_app.bin      --tty_port /dev/ttyUSB0      --baudrate 115200
+### Frame Sizing and Timeouts
+
+- **Maximum payload size: 2039 bytes.** Derived from `BUFFER_MAX_SIZE − HEADER_SIZE − CRC_SIZE = 2048 − 7 − 2`. `CMD_DATA` chunks must fit within this.
+- **Default host chunk size: 1024 bytes** (`serial_flasher/python/serial_flasher.py`); configurable via the `FrameProcessor` constructor.
+- **Per-frame UART receive timeout: 100 ms** (`TIMEOUT_MS` in the MCU FSM). A frame that does not complete within the window is treated as a frame error.
+
+### MCU State Machine and Error Handling
+
+The Mermaid diagram above shows the happy path. The full error semantics:
+
+| State         | Frame error / bad CRC / unexpected CMD                      | CRC mismatch on `CMD_END`            |
+|---------------|-------------------------------------------------------------|--------------------------------------|
+| `PING_STATE`  | NACK, **stay** in `PING_STATE`                              | n/a                                  |
+| `START_STATE` | NACK, transition to `RESET_STATE` → `PING_STATE`            | n/a                                  |
+| `DATA_STATE`  | NACK, transition to `RESET_STATE` → `PING_STATE`            | NACK, `RESET_STATE` → `PING_STATE`   |
+
+`RESET_STATE` always falls through to `PING_STATE`, so any hard error forces the host to start over from `CMD_PING`. There is no retry cap on either side; the Python flasher raises `RuntimeError` on the first NACK or frame error and stops.
+
+`CMD_ACK` and `CMD_NACK` frames have empty payloads (`LEN = 0`) — they are 9-byte fixed-length frames (`SOF | VER | CMD | LEN(=0) | CRC_L | CRC_H`).
+
+### Transport / Flash Injection
+
+The protocol FSM lives in `serial_flasher/mcu/Src/serial_flasher.c` and is transport- and flash-agnostic. The bootloader wires it up at runtime via `set_serial_api(serial_api_t)` (`bootloader/Src/main.c`), passing in:
+
+| Field              | Implementation                                  |
+|--------------------|-------------------------------------------------|
+| `send`             | `uart1_send`                                    |
+| `recv`             | `uart1_recv`                                    |
+| `fw_feed`          | `flash_fw_feed`                                 |
+| `fw_flush`         | `flash_fw_flush`                                |
+| `fw_reset`         | `flash_fw_reset`                                |
+| `fw_crc_check`     | `fw_crc_check`                                  |
+| `fw_write_header`  | `fw_write_header`                               |
+| `max_fw_size`      | `get_max_fw_size()`                             |
+
+This is the seam to swap if you want to drive the same FSM over a different transport (USB CDC, SPI) or against a different flash backend.
+
+## Stack Diagnostics and Crash Dump
+
+The `boot_control` module provides runtime stack-usage analysis and a persistent crash-dump path that survives a HardFault-triggered reset.
+
+### Stack Painting and High-Water Mark
+
+At reset, `init_stack()` paints the unused portion of the stack with the sentinel word `0xDEADBEEF`, from `_sstack` up to a safe headroom below the live MSP. The worst-case usage can then be derived at any time by scanning upward from `_sstack` and counting words that still hold the sentinel — the first non-sentinel word marks the deepest point the SP ever reached.
+
+Public API (see `boot_control/Inc/stack_config.h`):
+
+| Function | Purpose |
+|---|---|
+| `init_stack()` | Paint the stack with `0xDEADBEEF`. Called early from the Reset_Handler before `.data`/`.bss` init. |
+| `get_stack_size()` | Total stack region size in bytes (`_estack - _sstack`). |
+| `get_stack_high_water()` | Worst-case bytes ever used since `init_stack()`. A value equal to `get_stack_size()` indicates overflow. |
+| `print_stack_info()` | Prints `base / top / size / high_water (P%)` over UART. |
+| `print_heap_info()` | Prints heap base/top, max-available, and reserved heap size. |
+| `traverse_stack()` | Snapshots the stack into a static buffer (sized by `STACK_USAGE_BYTES`, currently 0x1000) and prints it word by word, so the dump itself does not contaminate the live region. |
+| `traverse_stack_skip_words(offset_words)` | Same dump, but starts `offset_words` words above `_sstack`. Useful when only the top frames are interesting. |
+
+The snapshot-then-print pattern matters: printf uses stack scratch space, so reading the live stack directly while printing would corrupt the bottom of the region you are trying to inspect.
+
+### HardFault Crash Dump
+
+When a HardFault fires, the assembly `HardFault_Handler` selects the faulting stack pointer (MSP or PSP via `EXC_RETURN`) and tail-calls into `hardfault_c(uint32_t* fault_sp)`. That C handler captures CPU state into a `crash_dump_t` stored in the `BOOT_CONFIG` noinit RAM section, then resets the system with reason `HARD_FAULT`.
+
+`crash_dump_t` (see `boot_control/Inc/boot_config.h`) holds:
+
+- `sp_at_fault` — stack pointer at fault entry
+- `cfsr`, `hfsr`, `mmfar`, `bfar` — fault status registers
+- `hw_frame[8]` — the hardware-stacked exception frame (`r0-r3, r12, lr, pc, xPSR`)
+- `stack_captured` and `stack[CRASH_DUMP_STACK_WORDS]` — words copied starting from `sp_at_fault`
+
+On the next boot, the bootloader detects `reset_reason == HARD_FAULT` and calls `crash_dump_print()` to emit the dump over UART.
+
+### Offline Decode
+
+Raw register values and stack words are not very actionable on their own. `scripts/decode_crash.py` consumes the textual dump (from `--dump <file>` or stdin) and an ELF, and produces a readable backtrace:
+
+- Decodes `CFSR` / `HFSR` flag bits into names.
+- Resolves `pc` and `lr` to function and `source:line` via `addr2line` (C++ demangled).
+- Walks the captured stack for return-address candidates (`0x0800xxxx`) and validates each by checking that the instruction at `addr - 4` in the ELF is `bl` / `blx`, marking frames as confirmed or unconfirmed.
+- For frames present in DWARF, prints the parameter list. For the faulting frame, the first four params are mapped to `r0-r3` from `hw_frame`.
+
+Requires `pyelftools` (`pip install -r requirements.txt`).
+
+```bash
+python scripts/decode_crash.py \
+  --elf build/app/cmake_stm32_app.out \
+  --addr2line /opt/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-addr2line \
+  --objdump   /opt/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-objdump \
+  --dump      crash_dump_example
+```
+
+## RAM Memory Layout
+
+The STM32F401RE has 96 KB of SRAM mapped at `0x20000000`. The linker (`app/stm32f401_app.ld`) splits it into two regions: a 95 KB working `RAM` region and a 1 KB `RAM_CFG` region at the top, reserved for state that must survive a warm reset.
+
+| Region    | Start        | End          | Size  | Contents                                                |
+|-----------|--------------|--------------|-------|---------------------------------------------------------|
+| `RAM`     | `0x20000000` | `0x20017BFF` | 95 KB | `.data`, `.bss`, heap, stack                            |
+| `RAM_CFG` | `0x20017C00` | `0x20017FFF` | 1 KB  | `.BOOT_CONFIG` noinit section (`bootloader_api_t`)      |
+
+Inside the working `RAM`:
+
+```
+0x20000000  +-----------------------------+
+            | .data       (initialized)   |  copied from FLASH at startup
+            +-----------------------------+
+            | .bss        (zero-init)     |  cleared at startup
+            +-----------------------------+  _sheap / end / _end
+            | .heap                       |  >= _Min_Heap_Size (0x200)
+            |   |                         |  used by newlib _sbrk
+            |   v  grows toward higher    |
+            +-----------------------------+  _eheap (reserved heap ceiling)
+            |  ... free gap ...           |  available to heap until it
+            |                             |  hits _sstack
+0x20016C00  +-----------------------------+  _sstack
+            |   ^  grows toward lower     |
+            |   |                         |  _Stack_Size = 0x1000 (4 KB)
+            | stack                       |
+0x20017C00  +-----------------------------+  _estack (top of RAM)
+            | .BOOT_CONFIG (noinit)       |  RAM_CFG region, survives reset
+0x20018000  +-----------------------------+
+```
+
+Key points:
+
+- **Stack is anchored to the top of `RAM`**, not just placed after the heap. `_estack` = `ORIGIN(RAM) + LENGTH(RAM)` = `0x20017C00`, and `_sstack` = `_estack - _Stack_Size`. This makes the stack location deterministic regardless of how `.bss` or the heap grow.
+- **Heap and stack share the gap between `_eheap` and `_sstack`.** The heap can grow past `_eheap` (its reserved minimum) up to `_sstack`. The linker enforces `ASSERT(_eheap <= _sstack)` so a build that cannot guarantee `_Min_Heap_Size` fails loudly. Run-time collisions are still possible if the heap grows past the stack floor — `print_heap_info()` reports both the reserved size and the absolute upper bound.
+- **`RAM_CFG` is a separate noinit region**, not just an ordinary section. The `.noinit` output section places `*(.BOOT_CONFIG)` in `RAM_CFG` with `NOLOAD`, so startup code never zeroes it. This is what lets `crash_dump_t` and the rest of `bootloader_api_t` persist across the warm reset triggered by `hardfault_c()`. The boot info is validated on the next boot via the magic field (`BOOT_INFO_MAGIC = 0xDEADBEEF`).
+- **Stack painting (`0xDEADBEEF`) only touches the working `RAM` stack region**, never `RAM_CFG`. The two regions are physically adjacent but logically independent.
 
 ## Notes
 
