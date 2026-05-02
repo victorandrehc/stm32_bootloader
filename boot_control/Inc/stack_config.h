@@ -95,6 +95,8 @@ size_t get_stack_high_water(void);
  */
 void traverse_stack(void);
 
+void traverse_stack_last_bytes(size_t last_bytes);
+
 /**
  * @brief Return the maximum number of bytes the heap could ever grow to.
  *

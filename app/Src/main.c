@@ -54,9 +54,11 @@ int main(void)
     reset_called = false;  // set reset to false to avoid spurious IRQs
     print_stack_info();
     print_heap_info();
-    print_recursion(128);
+    // print_recursion(128);
 
-    // traverse_stack();
+    traverse_stack();
+    printf("last bytes\n");
+    traverse_stack_last_bytes(100);
     while (!reset_called)
     {
         blink(500);

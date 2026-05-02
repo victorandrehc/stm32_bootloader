@@ -88,22 +88,34 @@ void print_heap_info(void)
 static uint32_t stack_copy[STACK_USAGE_WORDS];
 void traverse_stack(void)
 {
-    const size_t size_bytes = (size_t) ((const uint8_t*) &_estack - (const uint8_t*) &_sstack);
-    const size_t copy_bytes = size_bytes > STACK_USAGE_BYTES ? STACK_USAGE_BYTES : size_bytes;
-    const size_t n_words = copy_bytes / sizeof(uint32_t);
-    if (size_bytes > STACK_USAGE_BYTES)
+    traverse_stack_last_bytes(0);
+}
+
+void traverse_stack_last_bytes(size_t offset)
+{
+    const size_t stack_size_words = get_stack_size() / sizeof(uint32_t);
+    if (offset > stack_size_words)
     {
-        printf("WARN: Traversing only the first %u bytes of the stack", (unsigned) copy_bytes);
+        printf("Offset [%u] cant go over the stack size in words %u", offset, stack_size_words);
+        return;
     }
 
-    memcpy(stack_copy, &_sstack, copy_bytes);
+    uint32_t* start = (uint32_t*) &_sstack + offset;
+    const size_t remaining_size_bytes = (size_t) ((const uint8_t*) &_estack - (const uint8_t*) start);
+    const size_t copy_bytes = remaining_size_bytes > STACK_USAGE_BYTES ? STACK_USAGE_BYTES : remaining_size_bytes;
+    if (remaining_size_bytes > STACK_USAGE_BYTES)
+    {
+        printf("WARN: Traversing only the first %u bytes of the stack from the offset", (unsigned) copy_bytes);
+    }
 
-    const uint32_t* base = &_sstack;
+    printf("start: %p offset: %u[0x%x], reaminaing_size: %u[0x%x]\n", (const void*) start, offset, offset, copy_bytes, copy_bytes);
+    memset(stack_copy, 0, sizeof(stack_copy));
+    memcpy(stack_copy, start, copy_bytes);
+
+    const size_t n_words = copy_bytes / sizeof(uint32_t);
+    const uint32_t* base = start;
     for (size_t i = 0; i < n_words; i++)
     {
-        printf("addr: %p\tbyte_off: 0x%03x\tvalue: 0x%08lx\n",
-               (const void*) (base + i),
-               (unsigned) (i * sizeof(uint32_t)),
-               (unsigned long) stack_copy[i]);
+        printf("addr: %p\tvalue: 0x%08lx\n", (const void*) (base + i), (unsigned long) stack_copy[i]);
     }
 }
