@@ -54,11 +54,13 @@ int main(void)
     reset_called = false;  // set reset to false to avoid spurious IRQs
     print_stack_info();
     print_heap_info();
-    // print_recursion(128);
+    print_recursion(128);  // exercise stack
+    print_stack_info();
 
-    traverse_stack();
-    printf("last bytes\n");
-    traverse_stack_skip_words(100);
+    // traverse the used part of the stack
+    const size_t stack_size = get_stack_size();
+    const size_t stack_usage = get_stack_high_water();
+    traverse_stack_skip_words((stack_size - stack_usage) / sizeof(uint32_t) - 5);
     while (!reset_called)
     {
         blink(500);
