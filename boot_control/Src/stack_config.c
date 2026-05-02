@@ -17,7 +17,7 @@ extern uint32_t _eheap;
 #define STACK_PAINT_WORD          0xDEADBEEFu
 #define PAINT_SAFETY_MARGIN_BYTES 64u /* headroom so we don't clobber our own frame */
 #define STACK_USAGE_BYTES         0x1000
-#define STACK_USAGE_WORDS         STACK_USAGE_BYTES / sizeof(uint32_t)
+#define STACK_USAGE_WORDS         (STACK_USAGE_BYTES / sizeof(uint32_t))
 
 void init_stack(void)
 {
@@ -90,9 +90,10 @@ static uint32_t stack_copy[STACK_USAGE_WORDS];
 void traverse_stack(void)
 {
     const size_t size_bytes = (size_t) ((const uint8_t*) &_estack - (const uint8_t*) &_sstack);
-    const size_t n_words = size_bytes / sizeof(uint32_t);
+    const size_t copy_bytes = size_bytes > STACK_USAGE_BYTES ? STACK_USAGE_BYTES : size_bytes;
+    const size_t n_words = copy_bytes / sizeof(uint32_t);
 
-    memcpy(stack_copy, &_sstack, size_bytes);
+    memcpy(stack_copy, &_sstack, copy_bytes);
 
     const uint32_t* base = &_sstack;
     for (size_t i = 0; i < n_words; i++)
