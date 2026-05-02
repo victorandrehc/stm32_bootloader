@@ -15,6 +15,15 @@ stdin), then uses addr2line and objdump to:
     (0x0800xxxx) and validate each by checking that the instruction at
     `addr - 4` in the ELF is `bl`/`blx`. Marks each candidate as either
     confirmed (preceded by a real call) or unconfirmed (coincidental).
+  - For each frame whose function is in the ELF DWARF info, also print
+    its parameter list (names and types). For the deepest (faulting)
+    frame, the first 4 parameters are mapped to r0-r3 from the captured
+    register state. For ancestor frames, parameter values are not shown
+    (recovery would require full DWARF CFI unwinding); only names/types
+    are displayed.
+
+Requires pyelftools for the DWARF parsing (`pip install pyelftools`).
+Without pyelftools the script still runs but skips the parameter section.
 """
 
 from __future__ import annotations
@@ -185,6 +194,126 @@ class Toolchain:
         return (False, f"no `bl`/`blx` at 0x{candidate:08x}")
 
 
+# ---- DWARF helper for parameter extraction --------------------------------
+
+class DwarfHelper:
+    """Minimal DWARF reader that maps an address to a list of (param_name,
+    param_type) tuples. Returns None if pyelftools isn't available or the
+    ELF lacks DWARF info."""
+
+    def __init__(self, elf_path: Path) -> None:
+        self.available = False
+        self._subprograms: List[Tuple[int, int, object, object]] = []
+        try:
+            from elftools.elf.elffile import ELFFile  # type: ignore
+        except ImportError:
+            return
+
+        self._fh = open(str(elf_path), "rb")
+        elf = ELFFile(self._fh)
+        if not elf.has_dwarf_info():
+            return
+
+        self._dwarf = elf.get_dwarf_info()
+        for cu in self._dwarf.iter_CUs():
+            for die in cu.iter_DIEs():
+                if die.tag != "DW_TAG_subprogram":
+                    continue
+                if "DW_AT_low_pc" not in die.attributes:
+                    continue
+                low = die.attributes["DW_AT_low_pc"].value
+                hi_attr = die.attributes.get("DW_AT_high_pc")
+                if hi_attr is None:
+                    continue
+                if hi_attr.form == "DW_FORM_addr":
+                    high = hi_attr.value
+                else:
+                    high = low + hi_attr.value
+                self._subprograms.append((low, high, die, cu))
+        self._subprograms.sort(key=lambda x: x[0])
+        self.available = True
+
+    def signature(self, addr: int) -> Optional[List[Tuple[str, str]]]:
+        """Return [(param_name, param_type_str), ...] for the function
+        containing `addr`, or None if not found."""
+        if not self.available:
+            return None
+        addr &= ~1
+        for low, high, die, cu in self._subprograms:
+            if low <= addr < high:
+                return self._params_of(die, cu)
+        return None
+
+    def _params_of(self, sub_die, cu) -> List[Tuple[str, str]]:
+        params: List[Tuple[str, str]] = []
+        for child in sub_die.iter_children():
+            if child.tag != "DW_TAG_formal_parameter":
+                continue
+            name = self._attr_str(child, "DW_AT_name", "?")
+            type_die = self._resolve_type(child.attributes.get("DW_AT_type"), cu)
+            params.append((name, self._type_str(type_die)))
+        return params
+
+    def _resolve_type(self, type_attr, owner_cu):
+        if type_attr is None:
+            return None
+        try:
+            if type_attr.form == "DW_FORM_ref_addr":
+                return self._dwarf.get_DIE_from_refaddr(type_attr.value)
+            return self._dwarf.get_DIE_from_refaddr(
+                owner_cu.cu_offset + type_attr.value
+            )
+        except Exception:
+            return None
+
+    def _type_str(self, die, depth: int = 0) -> str:
+        if die is None:
+            return "void"
+        if depth > 8:
+            return "..."
+        tag = die.tag
+        inner_attr = die.attributes.get("DW_AT_type")
+        cu = die.cu
+        if tag == "DW_TAG_base_type":
+            return self._attr_str(die, "DW_AT_name", "?")
+        if tag == "DW_TAG_pointer_type":
+            inner = self._type_str(self._resolve_type(inner_attr, cu), depth + 1)
+            return inner + " *"
+        if tag == "DW_TAG_reference_type":
+            inner = self._type_str(self._resolve_type(inner_attr, cu), depth + 1)
+            return inner + " &"
+        if tag == "DW_TAG_const_type":
+            inner = self._type_str(self._resolve_type(inner_attr, cu), depth + 1)
+            return "const " + inner
+        if tag == "DW_TAG_volatile_type":
+            inner = self._type_str(self._resolve_type(inner_attr, cu), depth + 1)
+            return "volatile " + inner
+        if tag == "DW_TAG_typedef":
+            return self._attr_str(die, "DW_AT_name", "?")
+        if tag == "DW_TAG_structure_type":
+            return "struct " + self._attr_str(die, "DW_AT_name", "<anon>")
+        if tag == "DW_TAG_union_type":
+            return "union " + self._attr_str(die, "DW_AT_name", "<anon>")
+        if tag == "DW_TAG_enumeration_type":
+            return "enum " + self._attr_str(die, "DW_AT_name", "<anon>")
+        if tag == "DW_TAG_array_type":
+            inner = self._type_str(self._resolve_type(inner_attr, cu), depth + 1)
+            return inner + "[]"
+        if tag == "DW_TAG_subroutine_type":
+            ret = self._type_str(self._resolve_type(inner_attr, cu), depth + 1)
+            return f"{ret}(*)(...)"
+        return tag
+
+    @staticmethod
+    def _attr_str(die, attr: str, default: str = "?") -> str:
+        if attr in die.attributes:
+            v = die.attributes[attr].value
+            if isinstance(v, bytes):
+                return v.decode("utf-8", errors="replace")
+            return str(v)
+        return default
+
+
 # ---- argument hint -------------------------------------------------------
 
 def hint_for(value: int, tc: Toolchain) -> str:
@@ -196,6 +325,12 @@ def hint_for(value: int, tc: Toolchain) -> str:
     if is_ram_address(value):
         return "  -> RAM pointer"
     return ""
+
+
+def format_signature(params: List[Tuple[str, str]]) -> str:
+    if not params:
+        return "(void)"
+    return "(" + ", ".join(f"{t} {n}" for n, t in params) + ")"
 
 
 # ---- arg validation ------------------------------------------------------
@@ -240,6 +375,12 @@ def main() -> int:
         return 2
 
     tc = Toolchain(a2l, objd, elf)
+    dw = DwarfHelper(elf)
+    if not dw.available:
+        sys.stderr.write(
+            "warning: pyelftools missing or ELF has no DWARF — "
+            "parameter signatures will not be shown\n"
+        )
 
     # ---- fault decode ----
     cfsr = info.get("cfsr", 0)
@@ -247,9 +388,9 @@ def main() -> int:
     print("=== Fault ===")
     print(f"  CFSR = 0x{cfsr:08x}    HFSR = 0x{hfsr:08x}")
     print(f"  decoded: {decode_fault(cfsr, hfsr)}")
-    if (cfsr & (1 << 7)) and "mmfar" in info:        # MMARVALID (MMFSR.7)
+    if (cfsr & (1 << 7)) and "mmfar" in info:
         print(f"  MMFAR = 0x{info['mmfar']:08x}")
-    if (cfsr & (1 << 15)) and "bfar" in info:        # BFARVALID (BFSR.7 → bit 15)
+    if (cfsr & (1 << 15)) and "bfar" in info:
         print(f"  BFAR  = 0x{info['bfar']:08x}")
     if "sp_at_fault" in info:
         print(f"  SP_at_fault: 0x{info['sp_at_fault']:08x}")
@@ -261,25 +402,36 @@ def main() -> int:
     lr = info.get("lr")
     if pc is not None:
         func, src = tc.addr_to_line(pc)
-        print(f"  PC = 0x{pc:08x}  {func}")
+        params = dw.signature(pc)
+        sig = format_signature(params) if params is not None else ""
+        print(f"  PC = 0x{pc:08x}  {func}{sig}")
         print(f"            at {src}")
+        # Map r0-r3 to first 4 params of PC's function (best-effort)
+        if params is not None and params:
+            print(f"  parameters (r0-r3 = arg snapshot at fault):")
+            for i, (pname, ptype) in enumerate(params[:4]):
+                key = f"r{i}"
+                v = info.get(key, 0)
+                hint = hint_for(v, tc) if v else ""
+                print(f"    {ptype} {pname} = 0x{v:08x}  (in {key}){hint}")
+            if len(params) > 4:
+                print(f"    {len(params) - 4} more param(s) on the stack "
+                      f"(not recovered)")
+        else:
+            print(f"  r0-r3 (arg snapshot at fault — value-only, no signature):")
+            for i in range(4):
+                v = info.get(f"r{i}", 0)
+                print(f"    r{i} = 0x{v:08x}{hint_for(v, tc)}")
     if lr is not None:
         func, src = tc.addr_to_line(lr)
+        params = dw.signature(lr)
+        sig = format_signature(params) if params is not None else ""
         valid, reason = tc.is_real_return_addr(lr)
         mark = "[ok]" if valid else "[??]"
-        print(f"  LR = 0x{lr:08x}  {mark}  {func}")
+        print(f"  LR = 0x{lr:08x}  {mark}  {func}{sig}")
         print(f"            at {src}")
         if not valid:
             print(f"            note: {reason}")
-    print()
-
-    # ---- r0-r3 ----
-    print("=== r0-r3 at fault (likely args if fault was early in PC's func) ===")
-    for i in range(4):
-        key = f"r{i}"
-        if key in info:
-            v = info[key]
-            print(f"  {key} = 0x{v:08x}{hint_for(v, tc)}")
     print()
 
     # ---- ancestor frames ----
@@ -291,14 +443,24 @@ def main() -> int:
         for stack_addr, ret_addr in candidates:
             valid, reason = tc.is_real_return_addr(ret_addr)
             func, src = tc.addr_to_line(ret_addr)
+            params = dw.signature(ret_addr)
+            sig = format_signature(params) if params is not None else ""
             mark = "[ok]" if valid else "[??]"
-            print(f"  [0x{stack_addr:08x}] -> 0x{ret_addr:08x}  {mark}  {func}")
+            print(f"  [0x{stack_addr:08x}] -> 0x{ret_addr:08x}  {mark}  "
+                  f"{func}{sig}")
             print(f"               at {src}")
             if not valid:
                 print(f"               note: {reason}")
+            if params:
+                print(f"               parameters (values not recoverable "
+                      f"without unwinding):")
+                for pname, ptype in params:
+                    print(f"                 {ptype} {pname}")
         print()
         print("  [ok] = preceded by a `bl`/`blx` (real return address)")
         print("  [??] = looks like flash, but no `bl` immediately before it")
+        print("  Param values shown only for the innermost frame "
+              "(from r0-r3 at fault).")
 
     return 0
 
