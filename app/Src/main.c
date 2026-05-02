@@ -32,15 +32,29 @@ void blink(uint32_t delay_ms)
 
 static volatile bool reset_called = false;
 
+void print_crash_warning(void)
+{
+    const int num_tries = 3;
+    const int delay_ms = 1000;
+    for (int i = 0; i < num_tries; i++)
+    {
+        printf("B1 PRESSED: CRASHING IN in %i ms\n", (num_tries - i) * delay_ms);
+        HAL_Delay(delay_ms);
+    }
+}
 void print_recursion(int n)
 {
     if (n == 0)
     {
-        __asm volatile("udf #0");  // undefined instruction → HardFault
         return;
     }
     print_stack_info();
     printf("This was probe #%d\n", n);
+    if (reset_called)
+    {
+        print_crash_warning();
+        __asm volatile("udf #0");  // undefined instruction → HardFault
+    }
     print_recursion(--n);
 }
 
@@ -55,13 +69,12 @@ int main(void)
     reset_called = false;  // set reset to false to avoid spurious IRQs
     print_stack_info();
     print_heap_info();
+    printf("STARTING STACK RECURSION: WILL PURPOSELY CRASH IF B1 IS PRESSED\n");
+    HAL_Delay(5000);
     print_recursion(128);  // exercise stack
     print_stack_info();
 
-    // traverse the used part of the stack
-    // const size_t stack_size = get_stack_size();
-    // const size_t stack_usage = get_stack_high_water();
-    // traverse_stack_skip_words((stack_size - stack_usage) / sizeof(uint32_t) - 5);
+    printf("PRESS B1 TO RESET IN DFU\n");
     while (!reset_called)
     {
         blink(500);

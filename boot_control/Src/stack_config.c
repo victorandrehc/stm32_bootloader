@@ -161,7 +161,7 @@ void crash_dump_print(void)
     }
     volatile crash_dump_t* cd = &bootloader_api_ptr->boot_info.crash_dump;
 
-    printf("=== CRASH DUMP ===\n");
+    printf("=== CRASH DUMP BEGIN ===\n");
     printf("sp_at_fault: 0x%08lx\n", (unsigned long) cd->sp_at_fault);
     printf("CFSR=0x%08lx HFSR=0x%08lx MMFAR=0x%08lx BFAR=0x%08lx\n",
            (unsigned long) cd->cfsr,
@@ -188,4 +188,5 @@ void crash_dump_print(void)
                (unsigned long) (cd->sp_at_fault + i * sizeof(uint32_t)),
                (unsigned long) cd->stack[i]);
     }
+    printf("=== CRASH DUMP END ===\n");
 }
