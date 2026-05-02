@@ -381,7 +381,18 @@ When a HardFault fires, the assembly `HardFault_Handler` selects the faulting st
 - `hw_frame[8]` — the hardware-stacked exception frame (`r0-r3, r12, lr, pc, xPSR`)
 - `stack_captured` and `stack[CRASH_DUMP_STACK_WORDS]` — words copied starting from `sp_at_fault`
 
-On the next boot, the bootloader detects `reset_reason == HARD_FAULT` and calls `crash_dump_print()` to emit the dump over UART.
+On the next boot, the bootloader detects `reset_reason == HARD_FAULT` and calls `crash_dump_print()` to emit the dump over UART. The output is bracketed by `=== CRASH DUMP BEGIN ===` and `=== CRASH DUMP END ===` markers so a captured serial log can be sliced cleanly into a file for the offline decoder.
+
+### Triggering a Crash (demo)
+
+The demo application provides an interactive way to provoke a crash without touching code. After the bootloader hands off to the app:
+
+1. The app prints `STARTING STACK RECURSION: WILL PURPOSELY CRASH IF B1 IS PRESSED` and waits 5 s.
+2. It enters `print_recursion(128)`, which exercises the stack on the way down.
+3. If **B1 is pressed at any point during the recursion**, the EXTI callback sets `reset_called`; the next recursion frame prints a 3 s "CRASHING IN ..." countdown and executes `udf #0` to raise a HardFault.
+4. The fault path captures the dump, resets, and the bootloader prints it on the next boot.
+
+To leave the app running normally, simply do not press B1 during the 5 s window or the recursion phase — recursion completes, the app loops in the blink/idle state, and B1 from there triggers a clean `APPLICATION_RESET` rather than a crash.
 
 ### Offline Decode
 
