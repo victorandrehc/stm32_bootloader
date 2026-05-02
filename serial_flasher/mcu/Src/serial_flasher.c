@@ -49,18 +49,23 @@ static const char* get_serial_state_str(const serial_state_t serial_state)
     }
 }
 
+/* CMD_START payload layout: uint32_t fw_size (LE) | uint16_t fw_crc (LE) = 6 bytes. */
+#define CMD_START_PAYLOAD_SIZE 6u
+
 static size_t get_fw_size(uint8_t* payload)
 {
     // host and target have the same endianess
-    const size_t* fw_size = (const size_t*) payload;
-    return *fw_size;
+    uint32_t fw_size;
+    memcpy(&fw_size, payload, sizeof(fw_size));
+    return (size_t) fw_size;
 }
 
-static uint32_t get_fw_crc(uint8_t* payload)
+static uint16_t get_fw_crc(uint8_t* payload)
 {
     // host and target have the same endianess
-    const uint32_t* fw_crc = (const uint32_t*) (payload + 4);
-    return *fw_crc;
+    uint16_t fw_crc;
+    memcpy(&fw_crc, payload + sizeof(uint32_t), sizeof(fw_crc));
+    return fw_crc;
 }
 
 serial_state_t process_ping_state()
@@ -106,6 +111,12 @@ serial_state_t process_start_state(size_t* fw_size, uint16_t* fw_crc)
     switch (cmd)
     {
         case CMD_START:
+            if (len != CMD_START_PAYLOAD_SIZE)
+            {
+                printf("CMD_START payload size mismatch: got 0x%x, expected 0x%x\n", len, CMD_START_PAYLOAD_SIZE);
+                send_nack();
+                return RESET_STATE;
+            }
             *fw_size = get_fw_size(payload);
             *fw_crc = get_fw_crc(payload);
             printf("fw_size 0x%x, max_fw_size 0x%x, crc 0x%x\n", *fw_size, serial_api->max_fw_size, *fw_crc);

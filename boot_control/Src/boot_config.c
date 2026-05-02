@@ -3,6 +3,7 @@
 
 #include "stm32f4xx_hal.h"
 
+#include <stack_config.h>
 #include <stdio.h>
 
 static volatile BOOT_CONFIG bootloader_api_t bootloader_api;
@@ -75,6 +76,21 @@ void init_boot_api()
     bootloader_api.reset = jump_to_bootloader_implementaton;
 }
 
+void clear_reset_reason(void)
+{
+    bootloader_api.boot_info.magic = 0;
+    bootloader_api.boot_info.reset_reason_uint = (uint32_t) UNKNOWN;
+}
+reset_reason_e get_reset_reason(void)
+{
+    if (bootloader_api.boot_info.magic != BOOT_INFO_MAGIC)
+    {
+        return UNKNOWN;
+    }
+
+    return (reset_reason_e) bootloader_api.boot_info.reset_reason_uint;
+}
+
 const char* get_reset_reason_string()
 {
     if (bootloader_api.boot_info.magic != BOOT_INFO_MAGIC)
@@ -82,7 +98,7 @@ const char* get_reset_reason_string()
         return "UNKNOWN_MAGIC_NUMBER_MISMATCH";
     }
 
-    const reset_reason_e reset_reason = (reset_reason_e) bootloader_api.boot_info.reset_reason_uint;
+    const reset_reason_e reset_reason = get_reset_reason();
     switch (reset_reason)
     {
         case POWER_CYCLE:
@@ -91,6 +107,8 @@ const char* get_reset_reason_string()
             return "APPLICATION RESET";
         case FIRMWARE_UPDATE:
             return "FIRMWARE UPDATE";
+        case HARD_FAULT:
+            return "HARD FAULT";
         default:
             break;
     }

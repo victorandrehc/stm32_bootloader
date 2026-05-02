@@ -52,22 +52,24 @@
 /* Entry Point */
 ENTRY(Reset_Handler)
 
-/* Highest address of the user mode stack */
-_estack = ORIGIN(RAM) + LENGTH(RAM);    /* end of RAM */
-/* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 0x200;      /* required amount of heap  */
-_Min_Stack_Size = 0x400; /* required amount of stack */
-
-
+/* Sizing knobs */
+_Min_Heap_Size  = 0x200;   /* required heap  */
+_Stack_Size     = 0x1000;  /* required stack */
 
 /* Specify the memory areas */
 MEMORY
 {
-  RAM (xrw)        : ORIGIN = 0x20000000, LENGTH = 95K
-  APP_HEADER       : ORIGIN = 0x08008000, LENGTH = 512
-  FLASH (rx)       : ORIGIN =  0x8008200, LENGTH = 97792
-  RAM_CFG  (rx)  : ORIGIN = 0x20017c00, LENGTH = 1K
+  RAM     (xrw) : ORIGIN = 0x20000000, LENGTH = 95K
+  APP_HEADER    : ORIGIN = 0x08008000, LENGTH = 512
+  FLASH   (rx)  : ORIGIN = 0x08008200, LENGTH = 97792
+  RAM_CFG (rx)  : ORIGIN = 0x20017c00, LENGTH = 1K
 }
+
+/* Stack lives at the top of RAM, deterministically.
+ * Cortex-M loads SP from the first word of the vector table at reset,
+ * which the startup code populates from _estack. */
+_estack = ORIGIN(RAM) + LENGTH(RAM);
+_sstack = _estack - _Stack_Size;
 
 /* Define output sections */
 SECTIONS
@@ -171,16 +173,24 @@ SECTIONS
     __bss_end__ = _ebss;
   } >RAM
 
-  /* User_heap_stack section, used to check that there is enough RAM left */
-  ._user_heap_stack :
+  /* Heap grows upward from end-of-bss. `end` / `_end` are what newlib's
+   * _sbrk uses as the starting break. We reserve _Min_Heap_Size as a
+   * minimum and let the link fail loudly if it would collide with the
+   * stack region above. */
+  .heap (NOLOAD) :
   {
     . = ALIGN(8);
-    PROVIDE ( end = . );
+    PROVIDE ( end  = . );
     PROVIDE ( _end = . );
+    _sheap = .;
     . = . + _Min_Heap_Size;
-    . = . + _Min_Stack_Size;
     . = ALIGN(8);
+    _eheap = .;
   } >RAM
+
+  /* Hard guarantee: heap ceiling must not run into the stack floor. */
+  ASSERT(_eheap <= _sstack,
+         "ERROR: heap + bss overflow into stack region")
 
 
 

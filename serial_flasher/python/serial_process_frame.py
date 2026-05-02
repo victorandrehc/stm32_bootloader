@@ -4,6 +4,11 @@ import crcmod
 
 crc16_ccitt = crcmod.predefined.mkCrcFun('ccitt-false')
 
+
+class FrameError(Exception):
+    pass
+
+
 class FrameProcessor(object):
    
     SOF = 0xA5
@@ -61,10 +66,9 @@ class FrameProcessor(object):
                 break
 
         # --- Read header ---
-        # VER (1) | CMD (1) | LEN_L (1) | LEN_H (1)
-        hdr = self.recv_exact(4)
-        ver, cmd, len_l, len_h = struct.unpack('<BBBB', hdr)
-        length = len_l | (len_h << 8)
+        # VER (1) | CMD (1) | LEN (4 LE)
+        hdr = self.recv_exact(6)
+        ver, cmd, length = struct.unpack('<BBI', hdr)
 
         if ver != self.VER:
             raise FrameError(f"Unsupported protocol version {ver}")
@@ -76,8 +80,8 @@ class FrameProcessor(object):
         crc_rx_bytes = self.recv_exact(2)
         crc_rx = struct.unpack('<H', crc_rx_bytes)[0]
 
-        # --- CRC check ---
-        crc_data = hdr + payload
+        # --- CRC check (covers SOF..PAYLOAD) ---
+        crc_data = bytes([self.SOF]) + hdr + payload
         crc_calc = crc16_ccitt(crc_data)
 
         if crc_calc != crc_rx:

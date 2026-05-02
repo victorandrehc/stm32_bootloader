@@ -7,7 +7,8 @@ set(SOURCE_FILES
         Src/stm32f4xx_it.c
         Src/system_stm32f4xx.c
         Src/startup_stm32f401xe.s
-        Src/syscalls.c)
+        Src/syscalls.c
+        ../boot_control/Src/stack_config.c)
 
 set(EXECUTABLE ${PROJECT_NAME}_app.out)
 

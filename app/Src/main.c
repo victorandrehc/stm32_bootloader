@@ -2,8 +2,10 @@
 
 #include <boot_config.h>
 #include <errno.h>
+#include <stack_config.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -30,14 +32,49 @@ void blink(uint32_t delay_ms)
 
 static volatile bool reset_called = false;
 
+void print_crash_warning(void)
+{
+    const int num_tries = 3;
+    const int delay_ms = 1000;
+    for (int i = 0; i < num_tries; i++)
+    {
+        printf("B1 PRESSED: CRASHING IN in %i ms\n", (num_tries - i) * delay_ms);
+        HAL_Delay(delay_ms);
+    }
+}
+void print_recursion(int n)
+{
+    if (n == 0)
+    {
+        return;
+    }
+    print_stack_info();
+    printf("This was probe #%d\n", n);
+    if (reset_called)
+    {
+        print_crash_warning();
+        __asm volatile("udf #0");  // undefined instruction → HardFault
+    }
+    print_recursion(--n);
+}
+
 int main(void)
 {
+    init_stack();
     HAL_Init();
     SystemClock_Config();
     MX_GPIO_Init();
     MX_USART2_UART_Init();
     printf("STARTING APPLICATION\n");
     reset_called = false;  // set reset to false to avoid spurious IRQs
+    print_stack_info();
+    print_heap_info();
+    printf("STARTING STACK RECURSION: WILL PURPOSELY CRASH IF B1 IS PRESSED\n");
+    HAL_Delay(5000);
+    print_recursion(128);  // exercise stack
+    print_stack_info();
+
+    printf("PRESS B1 TO RESET IN DFU\n");
     while (!reset_called)
     {
         blink(500);
@@ -155,7 +192,7 @@ void Error_Handler(void)
 {
     __disable_irq();
     while (1)
-    {}
+    { }
 }
 
 #ifdef USE_FULL_ASSERT
