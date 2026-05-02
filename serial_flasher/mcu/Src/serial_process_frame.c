@@ -164,10 +164,12 @@ static void send_ack_or_nack(serial_cmd_t cmd)
         return;
     }
     serial_api_t* serial_api = get_serial_api();
-    uint8_t frame[] = {SOF, VERSION, cmd, 0, 0, 0x00, 0x00};
-    uint16_t crc = crc16_ccitt(&frame[1], 4);
-    frame[5] = crc & 0xFF;
-    frame[6] = crc >> 8;
+    /* Empty-payload frame: SOF | VER | CMD | LEN(4 bytes = 0) | CRC(2 bytes).
+     * CRC covers SOF..PAYLOAD, matching the host→MCU rule. */
+    uint8_t frame[HEADER_SIZE + CRC_SIZE] = {SOF, VERSION, cmd, 0, 0, 0, 0, 0, 0};
+    uint16_t crc = crc16_ccitt(frame, HEADER_SIZE);
+    frame[HEADER_SIZE]     = crc & 0xFF;
+    frame[HEADER_SIZE + 1] = crc >> 8;
     serial_api->send(frame, sizeof(frame));
 }
 
