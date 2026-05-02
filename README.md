@@ -275,6 +275,10 @@ CRC: CRC16-CCITT (ccitt-false) calculated over: SOF | VER | CMD | LEN | PAYLOAD
 ```
 
 
+python scripts/decode_crash.py --elf build/app/cmake_stm32_app.out --addr2line /opt/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-addr2line --objdump /opt/arm-gnu-toolchain-14.3.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-objdump --dump crash_dump_example
+
+python serial_flasher/python/serial_flasher.py      build/app/cmake_stm32_app.bin      --tty_port /dev/ttyUSB0      --baudrate 115200
+
 ## Notes
 
 - This project is designed to be IDE-agnostic and script-driven.

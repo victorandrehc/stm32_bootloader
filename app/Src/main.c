@@ -32,10 +32,12 @@ void blink(uint32_t delay_ms)
 
 static volatile bool reset_called = false;
 
+
 void print_recursion(int n)
 {
     if (n == 0)
     {
+        __asm volatile("udf #0");  // undefined instruction → HardFault
         return;
     }
     print_stack_info();
@@ -66,7 +68,6 @@ int main(void)
         blink(500);
     }
     printf("RESET CALLED\n");
-    __asm volatile("udf #0");  // undefined instruction → HardFault
     bootloader_api_ptr->reset(FIRMWARE_UPDATE);
 }
 
