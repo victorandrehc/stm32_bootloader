@@ -47,6 +47,7 @@ void print_rescursion(int n)
 
 int main(void)
 {
+    init_stack();
     HAL_Init();
     SystemClock_Config();
     MX_GPIO_Init();
@@ -55,6 +56,7 @@ int main(void)
     reset_called = false;  // set reset to false to avoid spurious IRQs
     // print_rescursion(128);
      print_stack();
+     traverse_stack();
     while (!reset_called)
     {
        

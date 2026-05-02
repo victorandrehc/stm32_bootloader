@@ -1,8 +1,8 @@
 #pragma once
 #include <stddef.h>
 
-void print_stack(void);
-
-void init_stack(void);
-
-size_t get_stack_usage(void);
+void   init_stack(void);
+void   print_stack(void);
+size_t get_stack_size(void);
+size_t get_stack_high_water(void);
+void traverse_stack(void);

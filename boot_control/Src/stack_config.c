@@ -1,44 +1,86 @@
 #include "stack_config.h"
 #include <stdio.h>
 #include <stdint.h>
-#include <stdbool.h>
-#include "stm32f4xx_hal.h"   // or f1xx, l4xx, etc.
+#include <stddef.h>
+#include "stm32f4xx_hal.h"   /* for __get_MSP() via CMSIS */
+#include <string.h>
+#include <stdlib.h>
 
-
-#define U32_TO_PTR(U32, PTR_TYPE) ((PTR_TYPE*)&(U32))
 extern uint32_t _sstack;
 extern uint32_t _estack;
 
-#define STACK_PAINT_PATTERN 0x55
+extern uint32_t _sheap;
+extern uint32_t _end;
 
-void print_stack(void)
-{
-    printf("_estack: %p\t_sstack: %p\tsize:0x%x\tused:0x%x\n", U32_TO_PTR(_estack, void), U32_TO_PTR(_sstack, void), U32_TO_PTR(_estack, uint8_t) - U32_TO_PTR(_sstack, uint8_t), get_stack_usage());
-}
-
+#define STACK_PAINT_WORD          0xDEADBEEFu
+#define PAINT_SAFETY_MARGIN_BYTES 64u   /* headroom so we don't clobber our own frame */
 
 void init_stack(void)
 {
-    uint8_t* pivot = U32_TO_PTR(_sstack, uint8_t);
-    uint8_t* stack_bottom = U32_TO_PTR(_estack, uint8_t);
-    while(pivot < stack_bottom)
-    {
-        *pivot = STACK_PAINT_PATTERN;
-        pivot++;
+    uint32_t *p   = &_sstack;
+    uintptr_t sp  = (uintptr_t)__get_MSP();
+    uint32_t *end = (uint32_t *)((sp - PAINT_SAFETY_MARGIN_BYTES) & ~(uintptr_t)3u);
+
+    if (end > &_estack) end = &_estack;
+    while (p < end) {
+        *p++ = STACK_PAINT_WORD;
     }
 }
 
-__attribute__((optimize("O0")))
-size_t get_stack_usage(void)
+size_t get_stack_size(void)
 {
-   uint8_t* pivot = U32_TO_PTR(_sstack, uint8_t);
-    uint8_t* stack_bottom = U32_TO_PTR(_estack, uint8_t);
-    printf("_sstack:%p\t_estack:%p\n",pivot, stack_bottom);
-    while(pivot < stack_bottom)
-    {
-       printf("pivot: %p\tvalue 0x%x\tdiff: %x\n", pivot, *pivot, pivot - stack_bottom);
-        pivot++;
-    }
-    return pivot - stack_bottom;
+    return (size_t)((const uint8_t *)&_estack - (const uint8_t *)&_sstack);
+}
 
-} 
+
+size_t get_heap_size(void)
+{
+    return (size_t)((const uint8_t *)&_sstack - (const uint8_t *)&_end);
+}
+
+
+size_t get_stack_high_water(void)
+{
+    const uint32_t *p = &_sstack;
+    const uint32_t *e = &_estack;
+
+    while (p < e && *p == STACK_PAINT_WORD) {
+        p++;
+    }
+    return (size_t)((const uint8_t *)e - (const uint8_t *)p);
+}
+
+void print_stack(void)
+{
+    size_t total = get_stack_size();
+    size_t hw    = get_stack_high_water();
+    unsigned pct = total ? (unsigned)((hw * 100u) / total) : 0u;
+    size_t heap_size = get_heap_size();
+
+    printf("stack: base=%p top=%p size=%u high_water=%u (%u%%)\n",
+           (void *)&_sstack, (void *)&_estack,
+           (unsigned)total, (unsigned)hw, pct);
+    printf("heap size: %u[%x]\n", heap_size,heap_size);
+}
+
+void traverse_stack(void)
+{
+    const size_t size_bytes = (size_t)((const uint8_t *)&_estack - (const uint8_t *)&_sstack);
+    const size_t n_words    = size_bytes / sizeof(uint32_t);
+    uint32_t *stack_copy = malloc(size_bytes);
+    if(!stack_copy)
+    {
+        return;
+    }
+    memcpy(stack_copy, &_sstack, size_bytes);
+
+    const uint32_t *base = &_sstack;
+    for (size_t i = 0; i < n_words; i++) {
+        printf("addr: %p\tbyte_off: 0x%03x\tvalue: 0x%08lx\n",
+               (const void *)(base + i),
+               (unsigned)(i * sizeof(uint32_t)),
+               (unsigned long)stack_copy[i]);
+    }
+    free(stack_copy);
+}
+
