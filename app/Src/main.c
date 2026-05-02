@@ -32,7 +32,7 @@ void blink(uint32_t delay_ms)
 
 static volatile bool reset_called = false;
 
-void print_rescursion(int n)
+void print_recursion(int n)
 {
     if (n == 0)
     {
@@ -40,7 +40,7 @@ void print_rescursion(int n)
     }
     print_stack_info();
     printf("This was probe #%d\n", n);
-    print_rescursion(--n);
+    print_recursion(--n);
 }
 
 int main(void)
@@ -52,10 +52,11 @@ int main(void)
     MX_USART2_UART_Init();
     printf("STARTING APPLICATION\n");
     reset_called = false;  // set reset to false to avoid spurious IRQs
-                           // print_rescursion(128);
     print_stack_info();
     print_heap_info();
-    traverse_stack();
+    print_recursion(128);
+
+    // traverse_stack();
     while (!reset_called)
     {
         blink(500);
