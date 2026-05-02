@@ -219,4 +219,4 @@ void init_boot_api(void);
 const char* get_reset_reason_string(void);
 
 
-void hardfault_c(uint32_t* fault_sp);
+

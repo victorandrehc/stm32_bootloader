@@ -19,7 +19,8 @@
 
 #include "main.h"
 
-#include "boot_config.h"
+#include <boot_config.h>
+#include <stack_config.h>
 #include <stdio.h>
 
 // volatile bootloader_api_t* bootloader_api_ptr = (bootloader_api_t*) BOOT_CONFIG_START_ADDR;

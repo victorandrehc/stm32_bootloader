@@ -1,5 +1,6 @@
 #pragma once
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * @file  stack_config.h
@@ -133,3 +134,5 @@ size_t get_max_heap_available(void);
  * @return Reserved heap size in bytes.
  */
 size_t get_max_heap_reserved(void);
+
+void hardfault_c(uint32_t* fault_sp);

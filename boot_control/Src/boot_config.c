@@ -100,7 +100,3 @@ const char* get_reset_reason_string()
     return "UNKNOWN_REASON";
 }
 
-void hardfault_c(uint32_t* fault_sp){
-    printf("aqui\n");
-    bootloader_api_ptr->reset(HARD_FAULT);
-}

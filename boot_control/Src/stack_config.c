@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "boot_config.h"
 
 extern uint32_t _sstack;
 extern uint32_t _estack;
@@ -122,4 +123,9 @@ void traverse_stack_skip_words(size_t offset_words)
     {
         printf("addr: %p\tvalue: 0x%08lx\n", (const void*) (base + i), (unsigned long) stack_copy[i]);
     }
+}
+
+void hardfault_c(uint32_t* fault_sp){
+    printf("aqui\n");
+    bootloader_api_ptr->reset(HARD_FAULT);
 }
