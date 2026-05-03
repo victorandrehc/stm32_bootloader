@@ -36,10 +36,12 @@ uint32_t hw_crc_calculate(const uint8_t* data, size_t length)
         CRC->DR = __REV(word);
     }
 
+    /* Tail (1-3 leftover bytes): the unit only takes 32-bit writes, so pack
+     * leftovers MSB-first into one word, leave low bytes at 0x00. The unit
+     * then processes "data + zero padding". Host pads the same way.
+     * Example: 0xAA 0xBB -> last = 0xAABB0000 -> consumed as AA,BB,00,00. */
     if (tail_bytes != 0)
     {
-        /* Pack remaining bytes MSB-first into the last word; trailing positions
-         * stay 0x00 — host must pad with zeros to match. */
         uint32_t last = 0;
         for (size_t i = 0; i < tail_bytes; i++)
         {
