@@ -43,18 +43,17 @@ void flash_fw_reset(void);
 size_t get_max_fw_size(void);
 
 /**
- * @brief Verify the CRC of the received firmware.
+ * @brief Verify the CRC-32/MPEG-2 of the received firmware against the host value.
  *
- * Compares the received CRC value against a calculated CRC over
- * the programmed firmware data.
+ * Computed by the on-chip CRC peripheral over the programmed firmware bytes.
  *
- * @param crc_recv CRC value received from the host.
+ * @param crc_recv CRC32 value received from the host.
  * @param fw_len Length of the firmware in bytes.
  *
  * @return true If the CRC matches.
  * @return false If the CRC check fails.
  */
-bool fw_crc_check(uint16_t crc_recv, size_t fw_len);
+bool fw_crc_check(uint32_t crc_recv, size_t fw_len);
 
 /**
  * @brief Buffers the firmware header to flash.
@@ -64,12 +63,12 @@ bool fw_crc_check(uint16_t crc_recv, size_t fw_len);
  *
  * The data will be written when the sector is full or when flash_fw_flush is called
  *
- * @param crc_recv CRC value of the firmware.
+ * @param crc_recv CRC32 value of the firmware.
  * @param fw_len Length of the firmware in bytes.
  *
  * @return int Status code (0 for success, negative for error).
  */
-int fw_write_header(uint16_t crc_recv, size_t fw_len);
+int fw_write_header(uint32_t crc_recv, size_t fw_len);
 
 /**
  * @brief Validate the firmware header stored in flash.

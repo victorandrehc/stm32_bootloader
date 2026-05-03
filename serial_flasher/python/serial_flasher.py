@@ -17,7 +17,7 @@ class State(Enum):
 
 
 
-crc16_ccitt = crcmod.predefined.mkCrcFun('ccitt-false')
+crc32_mpeg = crcmod.predefined.mkCrcFun('crc-32-mpeg')
 
 class FirmwareUpdater:
     def __init__(self, frame_processor,firmware: bytes, chunk_size=256):
@@ -46,9 +46,13 @@ class FirmwareUpdater:
 
             # ---- START ----
             elif self.state == State.START:
-                fw_crc = crc16_ccitt(self.fw)
-                print(f"len: {len(self.fw):#02x} fw_crc: {fw_crc:#02x}")
-                payload = struct.pack('<I', len(self.fw)) + struct.pack('<H', fw_crc)
+                # The STM32F4 CRC peripheral only consumes 32-bit words, so the
+                # MCU pads the trailing bytes with zeros to a multiple of 4.
+                # Mirror that here so both sides hash the same byte stream.
+                pad_len = (-len(self.fw)) % 4
+                fw_crc = crc32_mpeg(self.fw + b'\x00' * pad_len)
+                print(f"len: {len(self.fw):#x} fw_crc: 0x{fw_crc:08x}")
+                payload = struct.pack('<I', len(self.fw)) + struct.pack('<I', fw_crc)
                 self.frame_processor.send_frame(self.frame_processor.CMD_START, payload)
                 self.wait_ack()
                 self.state = State.DATA

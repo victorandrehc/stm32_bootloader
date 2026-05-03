@@ -49,8 +49,8 @@ static const char* get_serial_state_str(const serial_state_t serial_state)
     }
 }
 
-/* CMD_START payload layout: uint32_t fw_size (LE) | uint16_t fw_crc (LE) = 6 bytes. */
-#define CMD_START_PAYLOAD_SIZE 6u
+/* CMD_START payload layout: uint32_t fw_size (LE) | uint32_t fw_crc (LE) = 8 bytes. */
+#define CMD_START_PAYLOAD_SIZE 8u
 
 static size_t get_fw_size(uint8_t* payload)
 {
@@ -60,10 +60,10 @@ static size_t get_fw_size(uint8_t* payload)
     return (size_t) fw_size;
 }
 
-static uint16_t get_fw_crc(uint8_t* payload)
+static uint32_t get_fw_crc(uint8_t* payload)
 {
     // host and target have the same endianess
-    uint16_t fw_crc;
+    uint32_t fw_crc;
     memcpy(&fw_crc, payload + sizeof(uint32_t), sizeof(fw_crc));
     return fw_crc;
 }
@@ -93,7 +93,7 @@ serial_state_t process_ping_state()
     }
 }
 
-serial_state_t process_start_state(size_t* fw_size, uint16_t* fw_crc)
+serial_state_t process_start_state(size_t* fw_size, uint32_t* fw_crc)
 {
     int ret = 0;
     serial_cmd_t cmd = CMD_UNKNOWN;
@@ -119,7 +119,7 @@ serial_state_t process_start_state(size_t* fw_size, uint16_t* fw_crc)
             }
             *fw_size = get_fw_size(payload);
             *fw_crc = get_fw_crc(payload);
-            printf("fw_size 0x%x, max_fw_size 0x%x, crc 0x%x\n", *fw_size, serial_api->max_fw_size, *fw_crc);
+            printf("fw_size 0x%x, max_fw_size 0x%x, crc 0x%08lx\n", *fw_size, serial_api->max_fw_size, *fw_crc);
             if (*fw_size > serial_api->max_fw_size)
             {
                 send_nack();
@@ -140,7 +140,7 @@ serial_state_t process_start_state(size_t* fw_size, uint16_t* fw_crc)
     }
 }
 
-serial_state_t process_data_state(size_t fw_size, uint16_t fw_crc)
+serial_state_t process_data_state(size_t fw_size, uint32_t fw_crc)
 {
     int ret = 0;
     serial_cmd_t cmd = CMD_UNKNOWN;
@@ -185,7 +185,7 @@ int recv_firmware()
     }
     serial_state_t serial_state = PING_STATE;
     size_t fw_size = 0;
-    uint16_t fw_crc = 0;
+    uint32_t fw_crc = 0;
 
     while (serial_state != END_STATE)
     {
