@@ -2,6 +2,7 @@
 
 #include "boot_config.h"
 #include "flash_handler.h"
+#include "hw_crc.h"
 #include "stack_config.h"
 #include "uart_handler.h"
 
@@ -54,6 +55,7 @@ int main(void)
     MX_USART2_UART_Init();
 
     uart_start_it();
+    hw_crc_init();
     init_boot_api();
 
     printf("   ____              __\n");
@@ -103,6 +105,7 @@ int main(void)
         Error_Handler();
     }
 
+    hw_crc_deinit();
     bootloader_api_ptr->jump_to_application();
     printf("SHOULD NOT HAVE RETURNED RESETING IN DFU\n");
     bootloader_api_ptr->reset(FIRMWARE_UPDATE);
@@ -134,7 +137,6 @@ void SystemClock_Config(void)
     {
         Error_Handler();
     }
-    __HAL_RCC_CRC_CLK_ENABLE();  // enable CRC clock
     RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
     RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
     RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;

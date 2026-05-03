@@ -46,22 +46,22 @@ typedef int (*flash_flush_t)(void);
 typedef void (*flash_reset_t)(void);
 
 /**
- * @brief Function pointer type for checking firmware CRC.
+ * @brief Function pointer type for checking firmware CRC32.
  *
- * @param crc_recv CRC value received for comparison.
+ * @param crc_recv CRC32 value received for comparison.
  * @param fw_len Length of the firmware in bytes.
  * @return true If CRC matches, false otherwise.
  */
-typedef bool (*fw_crc_check_t)(uint16_t crc_recv, size_t fw_len);
+typedef bool (*fw_crc_check_t)(uint32_t crc_recv, size_t fw_len);
 
 /**
  * @brief Function pointer type for writing the firmware header.
  *
- * @param crc_recv CRC value of the firmware.
+ * @param crc_recv CRC32 value of the firmware.
  * @param fw_len Length of the firmware in bytes.
  * @return int Status code (0 for success, negative for error).
  */
-typedef int (*fw_write_header_t)(uint16_t crc_recv, size_t fw_len);
+typedef int (*fw_write_header_t)(uint32_t crc_recv, size_t fw_len);
 
 /**
  * @brief API structure used by the serial flasher state machine.

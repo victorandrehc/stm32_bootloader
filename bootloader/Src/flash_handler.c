@@ -1,6 +1,7 @@
 #include "flash_handler.h"
 
 #include "boot_config.h"
+#include "hw_crc.h"
 #include "main.h"
 
 #include <assert.h>
@@ -213,29 +214,17 @@ int flash_fw_flush(void)
     return 0;
 }
 
-static uint16_t crc16_ccitt(const uint8_t* data, size_t len)
-{
-    uint16_t crc = 0xFFFF;
-    for (uint16_t i = 0; i < len; i++)
-    {
-        crc ^= (uint16_t) data[i] << 8;
-        for (uint8_t j = 0; j < 8; j++)
-            crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
-    }
-    return crc;
-}
-
 // this function is called externally after the firmware is flashed
-bool fw_crc_check(uint16_t crc_recv, size_t fw_len)
+bool fw_crc_check(uint32_t crc_recv, size_t fw_len)
 {
     flash_handler_t* first_sector = &flash_handler_array[0];
     const uint8_t* data = (const uint8_t*) (first_sector->start_addr + sizeof(fw_header_t));
-    uint16_t crc = crc16_ccitt(data, fw_len);
-    printf("FW CRC CALC: 0x%x RECV: 0x%x\n", crc, crc_recv);
+    uint32_t crc = hw_crc_calculate(data, fw_len);
+    printf("FW CRC CALC: 0x%08lx RECV: 0x%08lx\n", crc, crc_recv);
     return crc == crc_recv;
 }
 
-int fw_write_header(uint16_t crc_recv, size_t fw_len)
+int fw_write_header(uint32_t crc_recv, size_t fw_len)
 {
     flash_handler_t* current_sector = &flash_handler_array[current_sector_pivot];
     if (pivot != 0 || current_sector->sector_id != FLASH_SECTOR_2)
