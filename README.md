@@ -133,9 +133,20 @@ The STM32F4 flash sectors are non-uniform: sectors 0–3 are 16 KB each, sector 
 
 ### Firmware Header at 0x08008000
 
-The "FW Header" row above refers to the runtime header consumed by the boot path: a 512 B `fw_header_t` (`boot_control/Inc/boot_config.h`) holding `magic` (`BOOT_INFO_MAGIC` / `0xDEADBEEF`), `fw_size`, and a CRC16. The bootloader writes it during the serial-flashing handshake (`fw_write_header` in `bootloader/Src/flash_handler.c`) and validates it on every boot via `fw_check_header`.
+The "FW Header" row above refers to the runtime header consumed by the boot path: a 512 B `fw_header_t` (`boot_control/Inc/boot_config.h`) holding `magic` (`BOOT_INFO_MAGIC` / `0xDEADBEEF`), `fw_size`, and a CRC32. The bootloader writes it during the serial-flashing handshake (`fw_write_header` in `bootloader/Src/flash_handler.c`) and validates it on every boot via `fw_check_header`. The CRC32 is computed by the STM32F4 hardware CRC peripheral (`boot_control/Src/hw_crc.c`) — see [Hardware CRC32](#hardware-crc32) below.
 
-A second header type, `firmware_header_t` (`boot_control/Inc/firmware_header.h`, 32 B with version, CRC32, and build timestamp), exists in the source tree and is instantiated by `app/Src/firmware_header_app.c` for embedding into the app image. Its validator (`firmware_verify_integrity`) is **not** wired into the bootloader's boot path today; the runtime check is `fw_check_header` over the 512 B header only. Treat `firmware_header_t` as in-progress richer metadata, not as the active validation path.
+A second header type, `firmware_header_t` (`boot_control/Inc/firmware_header.h`, 32 B with version, CRC32, and build timestamp), exists in the source tree as in-progress richer metadata. Its validator (`firmware_verify_integrity`) is **not** wired into the bootloader's boot path today; the runtime check is `fw_check_header` over the 512 B header only. The CRC32 path delegates to the same hardware CRC unit described below.
+
+### Hardware CRC32
+
+Both firmware-image CRCs (the active `fw_header_t` and the in-progress `firmware_header_t`) are computed by the STM32F4 on-chip CRC peripheral via `hw_crc_calculate` in `boot_control/Src/hw_crc.c`. The unit is fixed-configuration on this MCU:
+
+- Polynomial `0x04C11DB7`, init `0xFFFFFFFF`, no input/output reflection, no final XOR — i.e. **CRC-32/MPEG-2** (matches `crcmod`'s predefined `crc-32-mpeg`, **not** standard zlib CRC32).
+- 32-bit-word input only. The implementation byte-swaps each word before feeding it so the unit consumes bytes in memory order, and zero-pads any trailing 1–3 bytes when the firmware length is not a multiple of 4. The Python host applies the same zero-padding before computing its CRC.
+
+`hw_crc_init()` runs once on startup in `bootloader/Src/main.c`; `hw_crc_deinit()` resets and gates the peripheral right before `jump_to_application()` so the app starts with the CRC unit in a clean state.
+
+The serial-frame CRC (transport-level, see [Serial Flasher](#serial-flasher) below) is a separate construct and remains a software CRC16-CCITT.
 
 ### Related: persistent state in RAM
 
@@ -190,7 +201,7 @@ Before any jump happens, the bootloader (`bootloader/Src/main.c`) runs a small d
    - **`FIRMWARE_UPDATE`** → enter DFU directly (no countdown).
    - **Anything else** → 3 × 1 s countdown (`try_enter_DFU_mode()`), polling the **B1 button on PC13** (configured falling-edge in `MX_GPIO_Init`); if pressed at any point, enter DFU.
 3. If DFU was entered: switch the persisted reason to `APPLICATION_RESET` (so a debugger-driven soft reset doesn't loop back into DFU), run `recv_firmware()` over UART1 with `serial_api_t` wired to the flash handler, then `bootloader_api_ptr->reset(APPLICATION_RESET)`.
-4. If DFU was not entered: `fw_check_header()` validates the 512 B `fw_header_t` (magic + CRC16). On mismatch the bootloader resets with reason `FIRMWARE_UPDATE`, which sends the next boot straight back into DFU.
+4. If DFU was not entered: `fw_check_header()` validates the 512 B `fw_header_t` (magic + hardware CRC32 over the firmware bytes). On mismatch the bootloader resets with reason `FIRMWARE_UPDATE`, which sends the next boot straight back into DFU.
 5. On success: call `bootloader_api_ptr->jump_to_application()`.
 
 Note: the bootloader does **not** call `init_stack()` / `print_stack_info()` — those are app-side only (`app/Src/main.c`). The stack-painting sentinel never gets written into the bootloader's stack region.
@@ -304,7 +315,7 @@ CRC: CRC16-CCITT (ccitt-false) calculated over: SOF | VER | CMD | LEN | PAYLOAD
 | Name        | Value  | Direction      | Payload                                         |
 |-------------|--------|----------------|-------------------------------------------------|
 | `CMD_PING`  | `0x01` | Host → MCU     | none                                            |
-| `CMD_START` | `0x02` | Host → MCU     | `uint32_t fw_size` (LE) + `uint16_t fw_crc` (LE) — 6 bytes |
+| `CMD_START` | `0x02` | Host → MCU     | `uint32_t fw_size` (LE) + `uint32_t fw_crc` (LE, CRC-32/MPEG-2 over zero-padded firmware) — 8 bytes |
 | `CMD_DATA`  | `0x03` | Host → MCU     | firmware chunk bytes                            |
 | `CMD_END`   | `0x04` | Host → MCU     | none                                            |
 | `CMD_RESET` | `0x05` | Host → MCU     | none                                            |
